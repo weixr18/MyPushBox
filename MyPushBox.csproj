@@ -130,12 +130,14 @@
     </AppxManifest>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Assets\Block-Box.jpg" />
-    <Content Include="Assets\Block-Brick.jpg" />
-    <Content Include="Assets\Block-Ground.jpg" />
-    <Content Include="Assets\Block-Player.jpg" />
-    <Content Include="Assets\Block-RedBox.jpg" />
-    <Content Include="Assets\Block-Target.jpg" />
+    <Content Include="Assets\Block\Box.jpg" />
+    <Content Include="Assets\Block\Brick.jpg" />
+    <Content Include="Assets\Block\Ground.jpg" />
+    <Content Include="Assets\Block\Outside.jpg" />
+    <Content Include="Assets\Block\Player.jpg" />
+    <Content Include="Assets\Block\RedBox.jpg" />
+    <Content Include="Assets\Block\Target.jpg" />
+    <Content Include="Assets\Stages\1.txt" />
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -163,6 +165,7 @@
       <Version>6.1.1</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup />
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>

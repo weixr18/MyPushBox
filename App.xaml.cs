@@ -31,7 +31,6 @@ namespace MyPushBox
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
-            
         }
 
         /// <summary>
