@@ -13,7 +13,6 @@
     <RootType FullName="Windows.UI.Xaml.Controls.Grid">
       <RootProperty Name="HorizontalAlignment" />
       <RootProperty Name="VerticalAlignment" />
-      <RootProperty Name="MinWidth" />
     </RootType>
     <RootType FullName="MyPushBox.MainPage" />
   </Roots.RootTypes>

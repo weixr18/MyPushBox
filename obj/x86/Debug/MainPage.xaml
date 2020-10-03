@@ -9,9 +9,9 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <StackPanel>
+    <StackPanel >
         <Grid x:ConnectionId='2' x:Name="grid_table" HorizontalAlignment="Center"
-              VerticalAlignment="Center" MinWidth="">
+              VerticalAlignment="Center">
 
         </Grid>
     </StackPanel>
