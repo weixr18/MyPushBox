@@ -75,3 +75,4 @@ D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\MultipleQualifiersPerDimensionFound.txt
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\ProjectArchitectures.txt
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\.winmd_cache\$Microsoft.Graphics.Canvas.winmd_637214246760000000.json
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\.winmd_cache\$Microsoft.UI.Xaml.Markup.winmd_636885022160000000.json
+D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\MyPushBox.csprojAssemblyReference.cache

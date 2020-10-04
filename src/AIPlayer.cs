@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Drawing;
 using System.Diagnostics;
+using System.Collections;
 using System.Collections.Generic;
 
 
@@ -214,10 +215,13 @@ namespace MyPushBox {
     {
         protected PriorityQueue<GameState> open_queue;
         protected HashSet<GameState> close_list;
+
         protected GameState start_GameState;
+
 
         public GameStateProblem(GameState start_GameState)
         {
+            
             this.open_queue = new PriorityQueue<GameState>(6000);
             this.close_list = new HashSet<GameState>(37000);
             start_GameState.last_GameState = null;
@@ -241,8 +245,10 @@ namespace MyPushBox {
 
             while (true)
             {
+#if _DEBUG_
                 if(round_num % 10 == 0)
-                    Debug.WriteLine(String.Format("-----Round {0:G} -----", round_num));
+                    Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", round_num, this.open_queue.Count));
+#endif
                 round_num += 1;
                 //Console.WriteLine(String.Format("{0:G} {1:G}", this.open_queue.Count, this.close_list.Count));
 
@@ -256,8 +262,8 @@ namespace MyPushBox {
                     return new List<PlayerOperation>();
                 }
 
-                //Console.WriteLine("Current:");
-                //Console.WriteLine(current_GameState);
+                //Debug.WriteLine("Current:");
+                //Debug.WriteLine(current_GameState);
                 this.close_list.Add(current_GameState);
 
                 if (IsEndState(current_GameState))
@@ -265,14 +271,22 @@ namespace MyPushBox {
                     Debug.WriteLine("-----------Shortest path found.-----------");
                     GameState tmp_GameState = current_GameState;
                     int tmp_n = 0;
-                    while (tmp_GameState != null)
+                    Stack<GameState> path_stack = new Stack<GameState>();
+                    var res = new List<PlayerOperation>();
+
+                    while (tmp_GameState.last_GameState != null)
                     {
                         //Console.WriteLine("{0:G}:\n", tmp_n);
                         //Console.WriteLine(tmp_GameState);
+                        path_stack.Push(tmp_GameState);
                         tmp_GameState = tmp_GameState.last_GameState;
                         tmp_n += 1;
                     }
-                    return new List<PlayerOperation>();
+                    while (path_stack.Count > 0) {
+                        tmp_GameState = path_stack.Pop();
+                        res.Add(tmp_GameState.o);
+                    }
+                    return res;
                 }
                 else
                 {
@@ -285,6 +299,7 @@ namespace MyPushBox {
                             // father
                             continue;
                         }
+                        /*
                         else if (this.close_list.Contains(s))
                         {
                             // closed
@@ -293,8 +308,9 @@ namespace MyPushBox {
                                 this.close_list.Remove(s);
                                 s.path_cost = current_GameState.path_cost + 1;
                                 this.open_queue.Push(s);
+                                Debug.WriteLine("Remove close.");
 #if _DEBUG_
-                                Console.WriteLine("Remove close.");
+                                
                                 Console.WriteLine(s);
 #endif
                             }
@@ -307,6 +323,7 @@ namespace MyPushBox {
                             }
                             continue;
                         }
+                        */
                         else if (s.path_cost < 0)
                         {
                             s.path_cost = current_GameState.path_cost + 1;

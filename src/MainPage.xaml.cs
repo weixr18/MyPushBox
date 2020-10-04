@@ -93,7 +93,7 @@ namespace MyPushBox
             int player_y = -1;
             try
             {
-                var uri = new Uri("ms-appx:///Assets/Stages/1.txt");
+                var uri = new Uri("ms-appx:///Assets/Stages/2.txt");
                 var file = await StorageFile.GetFileFromApplicationUriAsync(uri).AsTask().ConfigureAwait(false);
                 var encoding = Encoding.GetEncoding("utf-8");
 
@@ -248,7 +248,9 @@ namespace MyPushBox
         private void Start_Button_Clicked(object sender, RoutedEventArgs e)
         {
             AI.SetStartBoard(GE.Board, GE);
+            Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));
             var path = AI.SearchPath();
+            Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));
         }
     }
 }
