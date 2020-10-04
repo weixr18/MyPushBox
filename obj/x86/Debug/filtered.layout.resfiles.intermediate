@@ -15,6 +15,6 @@ Assets\Stages\1.txt
 Assets\StoreLogo.png
 Assets\Wide310x150Logo.scale-200.png
 App.xbf
-MainPage.xbf
 MyPushBox.xr.xml
+src\MainPage.xbf
 Properties\Default.rd.xml

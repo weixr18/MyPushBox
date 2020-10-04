@@ -23,18 +23,16 @@ namespace MyPushBox
         Ground = 1,
         Target = 2,
         Box = 3,
-        RedBox = 4,
+        RedBox = 4, 
         Player = 5,
         TarPlayer = 6,
         Brick = 7,
         OutSide = 8,
+
+        // RedBox 只能和 Target 互相转化！！！
     }
 
-    /*
-     * RedBox 只能和 Target 互相转化！！！
-     */
-
-    enum PlayerOperation {
+    public enum PlayerOperation {
         MoveUp,
         MoveRight,
         MoveDown,
@@ -65,7 +63,6 @@ namespace MyPushBox
         }
     }
 
-    
 
     public sealed partial class MainPage : Page
     {
@@ -223,6 +220,14 @@ namespace MyPushBox
                 rd.Width = new GridLength(GRID_SIZE);
                 g.ColumnDefinitions.Add(rd);
             }
+
+            this.RefreshLayout();
+        }
+
+        private void RefreshLayout() {
+
+            int rowCount = Board.rowNum;
+            int colCount = Board.columnNum;
 
             for (int r = 0; r < rowCount; r++)
             {
@@ -471,7 +476,7 @@ namespace MyPushBox
                     throw new Exception("Map Data damaged.");
                 }
             }
-            // wrong state
+            // wrong GameState
             else
             {
                 throw new Exception("Map Data damaged.");
