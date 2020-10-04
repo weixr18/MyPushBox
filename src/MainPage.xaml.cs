@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Drawing;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
@@ -24,9 +25,11 @@ namespace MyPushBox
         private const int GRID_SIZE = 50;
         private Image[,] Images;
         public GameEngine GE;
+        public AIPlayer AI = new AIPlayer();
 
         public MainPage()
         {
+            
             // layout component initialize
             this.InitializeComponent();
 
@@ -240,6 +243,12 @@ namespace MyPushBox
                     break;
                 }
             }
+        }
+
+        private void Start_Button_Clicked(object sender, RoutedEventArgs e)
+        {
+            AI.SetStartBoard(GE.Board, GE);
+            var path = AI.SearchPath();
         }
     }
 }

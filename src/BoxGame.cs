@@ -37,7 +37,7 @@ namespace MyPushBox
         }
     }
 
-    public struct BoardInfo
+    public class BoardInfo
     {
         public int rowNum { get; }
         public int columnNum { get; }
@@ -49,7 +49,17 @@ namespace MyPushBox
             rowNum = r;
             columnNum = c;
             d = new GridType[r, c];
-            p = _p;
+            p = new Player(_p.x, _p.y);
+        }
+
+        public BoardInfo Clone() {
+            BoardInfo info = new BoardInfo(rowNum, columnNum, p);
+            for (int i = 0; i < rowNum; i++) {
+                for (int j = 0; j < columnNum; j++) {
+                    info.d[i, j] = this.d[i, j];
+                }
+            }
+            return info;
         }
     }
 
@@ -57,7 +67,7 @@ namespace MyPushBox
 
     public class GameEngine {
 
-        private BoardInfo Board;
+        public BoardInfo Board;
 
         public int rowNum 
         { 
@@ -84,12 +94,15 @@ namespace MyPushBox
             Board = b;
         }
 
-        public bool PlayerOperate(PlayerOperation o)
-        {
+        public bool PlayerOperate(PlayerOperation o) {
+            return PlayerOperate(o, this.Board);
+        }
 
+
+        public bool PlayerOperate(PlayerOperation o, BoardInfo info) {
             /**
-             * Get variables.
-             */
+            * Get variables.
+            */
 
             int bg_y = -1;
             int bg_x = -1;
@@ -101,60 +114,60 @@ namespace MyPushBox
             {
                 case PlayerOperation.MoveUp:
                 {
-                    if (Board.p.y == 0)
+                    if (info.p.y == 0)
                     {
                         return false;
                     }
-                    bg_y = Board.p.y - 1;
-                    bg_x = Board.p.x;
-                    nxt_y = Board.p.y - 2;
-                    nxt_x = Board.p.x;
-                    hasNextGrid = (Board.p.y > 1);
+                    bg_y = info.p.y - 1;
+                    bg_x = info.p.x;
+                    nxt_y = info.p.y - 2;
+                    nxt_x = info.p.x;
+                    hasNextGrid = (info.p.y > 1);
 
                     break;
                 }
                 case PlayerOperation.MoveDown:
                 {
-                    if (Board.p.y == Board.rowNum - 1)
+                    if (info.p.y == info.rowNum - 1)
                     {
                         return false;
                     }
 
-                    bg_y = Board.p.y + 1;
-                    bg_x = Board.p.x;
-                    nxt_y = Board.p.y + 2;
-                    nxt_x = Board.p.x;
-                    hasNextGrid = (Board.p.y < Board.rowNum - 2);
+                    bg_y = info.p.y + 1;
+                    bg_x = info.p.x;
+                    nxt_y = info.p.y + 2;
+                    nxt_x = info.p.x;
+                    hasNextGrid = (info.p.y < info.rowNum - 2);
 
                     break;
                 }
                 case PlayerOperation.MoveLeft:
                 {
-                    if (Board.p.x == 0)
+                    if (info.p.x == 0)
                     {
                         return false;
                     }
 
-                    bg_y = Board.p.y;
-                    bg_x = Board.p.x - 1;
-                    nxt_y = Board.p.y;
-                    nxt_x = Board.p.x - 2;
-                    hasNextGrid = (Board.p.x > 1);
+                    bg_y = info.p.y;
+                    bg_x = info.p.x - 1;
+                    nxt_y = info.p.y;
+                    nxt_x = info.p.x - 2;
+                    hasNextGrid = (info.p.x > 1);
 
                     break;
                 }
                 case PlayerOperation.MoveRight:
                 {
-                    if (Board.p.x == Board.columnNum - 1)
+                    if (info.p.x == info.columnNum - 1)
                     {
                         return false;
                     }
 
-                    bg_y = Board.p.y;
-                    bg_x = Board.p.x + 1;
-                    nxt_y = Board.p.y;
-                    nxt_x = Board.p.x + 2;
-                    hasNextGrid = (Board.p.x < Board.columnNum - 2);
+                    bg_y = info.p.y;
+                    bg_x = info.p.x + 1;
+                    nxt_y = info.p.y;
+                    nxt_x = info.p.x + 2;
+                    hasNextGrid = (info.p.x < info.columnNum - 2);
 
                     break;
                 }
@@ -164,76 +177,76 @@ namespace MyPushBox
              * Logic Judgement.
              */
 
-            if (Board.d[bg_y, bg_x] == GridType.Brick)
+            if (info.d[bg_y, bg_x] == GridType.Brick)
             {
                 return false;
             }
             // move to ground
-            else if (Board.d[bg_y, bg_x] == GridType.Ground)
+            else if (info.d[bg_y, bg_x] == GridType.Ground)
             {
-                Board.d[bg_y, bg_x] = GridType.Player;
+                info.d[bg_y, bg_x] = GridType.Player;
 
-                if (Board.d[Board.p.y, Board.p.x] == GridType.TarPlayer)
+                if (info.d[info.p.y, info.p.x] == GridType.TarPlayer)
                 {
-                    Board.d[Board.p.y, Board.p.x] = GridType.Target;
+                    info.d[info.p.y, info.p.x] = GridType.Target;
                 }
                 else
                 {
-                    Board.d[Board.p.y, Board.p.x] = GridType.Ground;
+                    info.d[info.p.y, info.p.x] = GridType.Ground;
                 }
             }
             // move to target
-            else if (Board.d[bg_y, bg_x] == GridType.Target)
+            else if (info.d[bg_y, bg_x] == GridType.Target)
             {
-                Board.d[bg_y, bg_x] = GridType.TarPlayer;
-                if (Board.d[Board.p.y, Board.p.x] == GridType.TarPlayer)
+                info.d[bg_y, bg_x] = GridType.TarPlayer;
+                if (info.d[info.p.y, info.p.x] == GridType.TarPlayer)
                 {
-                    Board.d[Board.p.y, Board.p.x] = GridType.Target;
+                    info.d[info.p.y, info.p.x] = GridType.Target;
                 }
                 else
                 {
-                    Board.d[Board.p.y, Board.p.x] = GridType.Ground;
+                    info.d[info.p.y, info.p.x] = GridType.Ground;
                 }
             }
             // push box
-            else if (Board.d[bg_y, bg_x] == GridType.Box)
+            else if (info.d[bg_y, bg_x] == GridType.Box)
             {
                 if (!hasNextGrid)
                 {
                     return false;
                 }
 
-                if (Board.d[nxt_y, nxt_x] == GridType.Ground
-                    || Board.d[nxt_y, nxt_x] == GridType.Target)
+                if (info.d[nxt_y, nxt_x] == GridType.Ground
+                    || info.d[nxt_y, nxt_x] == GridType.Target)
                 {
                     // self
-                    if (Board.d[Board.p.y, Board.p.x] == GridType.TarPlayer)
+                    if (info.d[info.p.y, info.p.x] == GridType.TarPlayer)
                     {
-                        Board.d[Board.p.y, Board.p.x] = GridType.Target;
+                        info.d[info.p.y, info.p.x] = GridType.Target;
                     }
                     else
                     {
-                        Board.d[Board.p.y, Board.p.x] = GridType.Ground;
+                        info.d[info.p.y, info.p.x] = GridType.Ground;
                     }
 
                     // bg
-                    Board.d[bg_y, bg_x] = GridType.Player;
+                    info.d[bg_y, bg_x] = GridType.Player;
 
                     // next
-                    if (Board.d[nxt_y, nxt_x] == GridType.Ground)
+                    if (info.d[nxt_y, nxt_x] == GridType.Ground)
                     {
-                        Board.d[nxt_y, nxt_x] = GridType.Box;
+                        info.d[nxt_y, nxt_x] = GridType.Box;
                     }
-                    else if (Board.d[nxt_y, nxt_x] == GridType.Target)
+                    else if (info.d[nxt_y, nxt_x] == GridType.Target)
                     {
-                        Board.d[nxt_y, nxt_x] = GridType.RedBox;
+                        info.d[nxt_y, nxt_x] = GridType.RedBox;
                     }
 
 
                 }
-                else if (Board.d[nxt_y, nxt_x] == GridType.Brick
-                    || Board.d[nxt_y, nxt_x] == GridType.Box
-                    || Board.d[nxt_y, nxt_x] == GridType.RedBox)
+                else if (info.d[nxt_y, nxt_x] == GridType.Brick
+                    || info.d[nxt_y, nxt_x] == GridType.Box
+                    || info.d[nxt_y, nxt_x] == GridType.RedBox)
                 {
                     return false;
                 }
@@ -243,43 +256,43 @@ namespace MyPushBox
                 }
             }
             // push red box
-            else if (Board.d[bg_y, bg_x] == GridType.RedBox)
+            else if (info.d[bg_y, bg_x] == GridType.RedBox)
             {
                 if (!hasNextGrid)
                 {
                     return false;
                 }
-                if (Board.d[nxt_y, nxt_x] == GridType.Ground
-                    || Board.d[nxt_y, nxt_x] == GridType.Target)
+                if (info.d[nxt_y, nxt_x] == GridType.Ground
+                    || info.d[nxt_y, nxt_x] == GridType.Target)
                 {
 
                     // self
-                    if (Board.d[Board.p.y, Board.p.x] == GridType.TarPlayer)
+                    if (info.d[info.p.y, info.p.x] == GridType.TarPlayer)
                     {
-                        Board.d[Board.p.y, Board.p.x] = GridType.Target;
+                        info.d[info.p.y, info.p.x] = GridType.Target;
                     }
                     else
                     {
-                        Board.d[Board.p.y, Board.p.x] = GridType.Ground;
+                        info.d[info.p.y, info.p.x] = GridType.Ground;
                     }
 
                     // bg
-                    Board.d[bg_y, bg_x] = GridType.TarPlayer;
+                    info.d[bg_y, bg_x] = GridType.TarPlayer;
 
                     // next
-                    if (Board.d[nxt_y, nxt_x] == GridType.Ground)
+                    if (info.d[nxt_y, nxt_x] == GridType.Ground)
                     {
-                        Board.d[nxt_y, nxt_x] = GridType.Box;
+                        info.d[nxt_y, nxt_x] = GridType.Box;
                     }
-                    else if (Board.d[nxt_y, nxt_x] == GridType.Target)
+                    else if (info.d[nxt_y, nxt_x] == GridType.Target)
                     {
-                        Board.d[nxt_y, nxt_x] = GridType.RedBox;
+                        info.d[nxt_y, nxt_x] = GridType.RedBox;
                     }
 
                 }
-                else if (Board.d[nxt_y, nxt_x] == GridType.Brick
-                    || Board.d[nxt_y, nxt_x] == GridType.Box
-                    || Board.d[nxt_y, nxt_x] == GridType.RedBox)
+                else if (info.d[nxt_y, nxt_x] == GridType.Brick
+                    || info.d[nxt_y, nxt_x] == GridType.Box
+                    || info.d[nxt_y, nxt_x] == GridType.RedBox)
                 {
                     return false;
                 }
@@ -295,33 +308,35 @@ namespace MyPushBox
             }
 
             /**
-             * Move Board.p.
+             * Move player
              */
             switch (o)
             {
                 case PlayerOperation.MoveUp:
                 {
-                    Board.p.y -= 1;
+                    info.p.y -= 1;
                     break;
                 }
                 case PlayerOperation.MoveDown:
                 {
-                    Board.p.y += 1;
+                    info.p.y += 1;
                     break;
                 }
                 case PlayerOperation.MoveLeft:
                 {
-                    Board.p.x -= 1;
+                    info.p.x -= 1;
                     break;
                 }
                 case PlayerOperation.MoveRight:
                 {
-                    Board.p.x += 1;
+                    info.p.x += 1;
                     break;
                 }
             }
 
             return true;
         }
+
+
     }
 }

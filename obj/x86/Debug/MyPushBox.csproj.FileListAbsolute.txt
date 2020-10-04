@@ -1,4 +1,3 @@
-D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\MyPushBox.csprojAssemblyReference.cache
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\App.g.i.cs
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\App.g.cs
 D:\Codes\C#\AI\MyPushBox\obj\x86\Debug\src\MainPage.g.i.cs

@@ -121,6 +121,7 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="src\BoxGame.cs" />
+    <Compile Include="src\Hungary.cs" />
     <Compile Include="src\MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>

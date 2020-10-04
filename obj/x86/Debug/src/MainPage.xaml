@@ -14,6 +14,11 @@
               VerticalAlignment="Center">
 
         </Grid>
+        <StackPanel HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+            <Button x:ConnectionId='3'                             >Search</Button>
+            
+        </StackPanel>
     </StackPanel>
     
 

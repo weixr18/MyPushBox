@@ -2,6 +2,8 @@
 
 using System;
 using System.IO;
+using System.Drawing;
+using System.Diagnostics;
 using System.Collections.Generic;
 
 
@@ -9,21 +11,17 @@ namespace MyPushBox {
 
     class GameState : IComparable
     {
-        // TODO: change to box game
-
-        public int[] d;
+        
+        public BoardInfo bi;
         public double path_cost;
         public double distance_cost;
         public GameState last_GameState;
         public PlayerOperation o;
 
-        public GameState(int[] array)
+        public GameState(BoardInfo info)
         {
-            if (array.Length != 9)
-            {
-                throw (new FormatException("GameState should be 9 numbers."));
-            }
-            this.d = (int[])array.Clone();
+
+            this.bi = (BoardInfo)info.Clone();
             this.distance_cost = -1;
             this.path_cost = -1;
         }
@@ -56,7 +54,6 @@ namespace MyPushBox {
             return (s1.path_cost + s1.distance_cost) > (s2.path_cost + s2.distance_cost);
         }
 
-
         public static bool operator ==(GameState s1, GameState s2)
         {
             if ((s1 as object) == null)
@@ -69,14 +66,7 @@ namespace MyPushBox {
                 return false;
             }
 
-            for (int i = 0; i < s1.d.Length; i++)
-            {
-                if (s1.d[i] != s2.d[i])
-                {
-                    return false;
-                }
-            }
-            return true;
+            return s1.bi.d.Equals(s2.bi.d);
         }
 
         public static bool operator !=(GameState s1, GameState s2)
@@ -93,36 +83,18 @@ namespace MyPushBox {
             }
 
 
-            for (int i = 0; i < s1.d.Length; i++)
-            {
-                if (s1.d[i] != s2.d[i])
-                {
-                    return true;
-                }
-            }
-            return false;
+            return !s1.bi.d.Equals(s2.bi.d);
         }
 
         public override string ToString()
         {
-            String s = String.Format(
-                "{0:G} {1:G} {2:G}\n{3:G} {4:G} {5:G}\n{6:G} {7:G} {8:G}\n",
-                this.d[0],
-                this.d[1],
-                this.d[2],
-                this.d[3],
-                this.d[4],
-                this.d[5],
-                this.d[6],
-                this.d[7],
-                this.d[8]
-                );
+            String s = "";
+            s += String.Format("  player position: ({0:G}, {1:G})\n", bi.p.y, bi.p.x);
             s += String.Format(
-                "(path, distance, sum): ({0:G}, {1:G}, {2:G})\n",
+                "  (path, distance, sum): ({0:G}, {1:G}, {2:G})\n",
                 this.path_cost, this.distance_cost,
                 this.path_cost + this.distance_cost
                 );
-
             return s;
         }
 
@@ -141,15 +113,7 @@ namespace MyPushBox {
 
         public override int GetHashCode()
         {
-            return this.d[0] * 100000000
-            + this.d[1] * 10000000
-            + this.d[2] * 1000000
-            + this.d[3] * 100000
-            + this.d[4] * 10000
-            + this.d[5] * 1000
-            + this.d[6] * 100
-            + this.d[7] * 10
-            + this.d[8] * 1;
+            return bi.d.GetHashCode();
         }
 
     }
@@ -213,7 +177,6 @@ namespace MyPushBox {
 
         public bool Has(T v)
         {
-            // TODO
             for (int i = 0; i < heap.GetLength(0); i++)
             {
                 if (heap[i].Equals(v))
@@ -252,21 +215,24 @@ namespace MyPushBox {
         protected PriorityQueue<GameState> open_queue;
         protected HashSet<GameState> close_list;
         protected GameState start_GameState;
-        protected GameState end_GameState;
 
-        public GameStateProblem(GameState start_GameState, GameState end_GameState)
+        public GameStateProblem(GameState start_GameState)
         {
-            this.open_queue = new PriorityQueue<GameState>(60000);
-            this.close_list = new HashSet<GameState>(370000);
+            this.open_queue = new PriorityQueue<GameState>(6000);
+            this.close_list = new HashSet<GameState>(37000);
+            start_GameState.last_GameState = null;
+            start_GameState.o = 0;
+            start_GameState.path_cost = 0;
             this.start_GameState = start_GameState;
-            this.end_GameState = end_GameState;
         }
 
         public abstract List<GameState> GetNextGameStates(GameState current_GameState);
 
-        public abstract double GetDistance(GameState s1, GameState s2);
+        public abstract double GetEndDistance(GameState s);
 
-        public void RunAStar()
+        public abstract bool IsEndState(GameState s);
+
+        public List<PlayerOperation> RunAStar()
         {
             this.open_queue.Push(start_GameState);
             int round_num = 0;
@@ -275,7 +241,8 @@ namespace MyPushBox {
 
             while (true)
             {
-                //Console.WriteLine(String.Format("---------------Round {0:G} -------------", round_num));
+                if(round_num % 10 == 0)
+                    Debug.WriteLine(String.Format("-----Round {0:G} -----", round_num));
                 round_num += 1;
                 //Console.WriteLine(String.Format("{0:G} {1:G}", this.open_queue.Count, this.close_list.Count));
 
@@ -286,16 +253,16 @@ namespace MyPushBox {
                 catch (System.InvalidOperationException e)
                 {
                     //Console.WriteLine("Search over. Cannot find an answer.");
-                    return;
+                    return new List<PlayerOperation>();
                 }
 
                 //Console.WriteLine("Current:");
                 //Console.WriteLine(current_GameState);
                 this.close_list.Add(current_GameState);
 
-                if (current_GameState == end_GameState)
+                if (IsEndState(current_GameState))
                 {
-                    //Console.WriteLine("-----------Shortest path found.-----------");
+                    Debug.WriteLine("-----------Shortest path found.-----------");
                     GameState tmp_GameState = current_GameState;
                     int tmp_n = 0;
                     while (tmp_GameState != null)
@@ -305,7 +272,7 @@ namespace MyPushBox {
                         tmp_GameState = tmp_GameState.last_GameState;
                         tmp_n += 1;
                     }
-                    return;
+                    return new List<PlayerOperation>();
                 }
                 else
                 {
@@ -400,31 +367,115 @@ namespace MyPushBox {
 
     class PushBoxProblem : GameStateProblem {
 
-        public PushBoxProblem(GameState start_state, GameState end_state)
-            : base(start_state, end_state)
+        GameEngine GE;
+
+        public PushBoxProblem(GameState start_state, GameEngine _GE)
+            : base(start_state)
         {
-            // Nothing to do.
+            GE = _GE;
         }
 
         public override List<GameState> GetNextGameStates(GameState current_state) {
-            return new List<GameState>();
+            
+            var list = new List<GameState>();
+
+            foreach (PlayerOperation o in 
+                Enum.GetValues(typeof(PlayerOperation))) {
+
+                GameState new_state = new GameState(current_state.bi);
+                
+                var res = GE.PlayerOperate(o, new_state.bi);
+                if (res) {
+                    new_state.last_GameState = current_state;
+                    new_state.o = o;
+                    new_state.distance_cost = GetEndDistance(new_state);
+
+                    list.Add(new_state);
+                }
+            }
+
+            return list;
         }
 
-        public override double GetDistance(GameState s1, GameState s2) {
-            return 0;
+        public override double GetEndDistance(GameState s) {
+
+            List<Point> boxs = new List<Point>();
+            List<Point> targets = new List<Point>();
+            GridType[,] d = s.bi.d;
+
+            /// get boxes and targets
+            for (int i = 0; i < s.bi.rowNum; i++) 
+            {
+                for (int j = 0; j < s.bi.columnNum; j++) 
+                {
+                    if (d[i, j] == GridType.Box)
+                    {
+                        boxs.Add(new Point(i, j));
+                    }
+                    else if (d[i, j] == GridType.Target
+                         || d[i, j] == GridType.TarPlayer) 
+                    {
+                        targets.Add(new Point(i, j));
+                    }
+                }
+            }
+
+            if (boxs.Count != targets.Count) {
+                throw new Exception("Boxes and targets don't match.");
+            }
+
+            /// get each distance
+            int n = boxs.Count;
+            int[,] disMatrix = new int[n, n];
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    disMatrix[i, j] = Manhatton(boxs[i], targets[j]);
+                }
+            }
+
+            /// use Hungary Algorithm to find the minimum distance sum
+            ZMatrix m = new ZMatrix(disMatrix);
+            double res = m.Calculation();
+
+            return res;
         }
 
+        private int Manhatton(Point p1, Point p2) { 
+            return Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+        }
+
+        public override bool IsEndState(GameState s) {
+
+            foreach (var grid in s.bi.d) {
+                if (grid == GridType.Box) {
+                    return false;
+                }
+                if (grid == GridType.Target) {
+                    return false;
+                }
+                if (grid == GridType.TarPlayer) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     public class AIPlayer
     {
+        PushBoxProblem pbp;
+
         public AIPlayer() { 
-                    
+        }
+
+        public void SetStartBoard(BoardInfo info, GameEngine GE) {
+            GameState start_state = new GameState(info);
+            pbp = new PushBoxProblem(start_state, GE);
         }
 
         public List<PlayerOperation> SearchPath()
         {
-            return new List<PlayerOperation>();
+            return pbp.RunAStar();
         }
     }
 
