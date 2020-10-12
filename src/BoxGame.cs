@@ -110,7 +110,20 @@ namespace MyPushBox
 
         public bool Equals(BoardInfo obj)
         {
-            return Player.Equals(obj.Player) && Boxes.Equals(obj.Boxes);
+            if (!this.Player.Equals(obj.Player)) {
+                return false;
+            }
+
+            if (this.Boxes.Count != obj.Boxes.Count) {
+                return false;
+            }
+
+            foreach (var box in this.Boxes) {
+                if (!obj.Boxes.Contains(box)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

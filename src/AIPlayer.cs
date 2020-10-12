@@ -151,23 +151,25 @@ namespace MyPushBox {
         public abstract double GetEndDistance(GameState s);
 
         public abstract bool IsEndState(GameState s);
+        public abstract bool IsDeadState(GameState s);
 
         public List<PlayerOperation> RunAStar()
         {
             this.OpenQueue.Push(StartState);
-            int roundNum = 0;
             GameState currentState = null;
             List<GameState> nextStates;
+#if _DEBUG_
+            int roundNum = 0;
+#endif
 
             while (true)
             {
 #if _DEBUG_
+                roundNum += 1;
                 if(roundNum % 10 == 0)
                     Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", roundNum, this.OpenQueue.Count));
 #endif
-                roundNum += 1;
-                //Console.WriteLine(String.Format("{0:G} {1:G}", this.OpenQueue.Count, this.CloseList.Count));
-
+                // get current state
                 try
                 {
                     currentState = this.OpenQueue.Pop();
@@ -177,11 +179,14 @@ namespace MyPushBox {
                     Debug.WriteLine("Search over. Cannot find an answer.");
                     return new List<PlayerOperation>();
                 }
-
                 //Debug.WriteLine("Current:");
                 //Debug.WriteLine(currentState);
+
+                // add to close list
                 this.CloseList.Add(currentState);
 
+
+                // judge if end state
                 if (IsEndState(currentState))
                 {
                     Debug.WriteLine("-----------Shortest path found.-----------");
@@ -198,12 +203,24 @@ namespace MyPushBox {
                         tmp_GameState = tmp_GameState.LastState;
                         tmp_n += 1;
                     }
-                    while (path_stack.Count > 0) {
+                    while (path_stack.Count > 0)
+                    {
                         tmp_GameState = path_stack.Pop();
                         res.Add(tmp_GameState.Operation);
                     }
                     return res;
                 }
+
+                // judge if dead state
+                else if (IsDeadState(currentState)) {
+#if _DEBUG_
+                    Debug.WriteLine("Dead!");
+                    Debug.WriteLine(currentState);
+#endif
+                    continue;
+                }
+
+                // extend state node
                 else
                 {
                     nextStates = this.GetNextGameStates(currentState);
@@ -215,7 +232,7 @@ namespace MyPushBox {
                             // father
                             continue;
                         }
-                        
+
                         else if (this.CloseList.Contains(s))
                         {
                             // closed
@@ -225,21 +242,13 @@ namespace MyPushBox {
                                 s.PathCost = currentState.PathCost + 1;
                                 this.OpenQueue.Push(s);
                                 Debug.WriteLine("Remove close.");
-#if _DEBUG_
-                                
-                                Console.WriteLine(s);
-#endif
                             }
                             else
                             {
-#if _DEBUG_
-                                Console.WriteLine("Add close.");
-                                Console.WriteLine(s);
-#endif
                             }
                             continue;
                         }
-                        
+
                         else if (s.PathCost < 0)
                         {
                             s.PathCost = currentState.PathCost + 1;
@@ -274,9 +283,7 @@ namespace MyPushBox {
                         }
 
                     }
-
-
-                    /*
+#if _DEBUG_
                     Console.WriteLine("Open queue:");
                     foreach (GameState s in this.OpenQueue.heap)
                     {
@@ -292,7 +299,7 @@ namespace MyPushBox {
 
                         Console.WriteLine(s);
                     }
-                    */
+#endif
                 }
             }
         }
@@ -304,12 +311,13 @@ namespace MyPushBox {
     /// </summary>
     class PushBoxProblem : GameStateProblem {
 
-        GameEngine GE;
+        GameEngine Engine;
+        private const bool CUT_BRANCHES = false;
 
-        public PushBoxProblem(GameState startState, GameEngine gameEngine)
+        public PushBoxProblem(GameState startState, GameEngine engine)
             : base(startState)
         {
-            GE = gameEngine;
+            Engine = engine;
         }
 
         /// <summary>
@@ -326,7 +334,7 @@ namespace MyPushBox {
             {
 
                 GameState new_state = new GameState(currentState.Info);
-                var res = GE.PlayerOperate(operation, new_state.Info);
+                var res = Engine.PlayerOperate(operation, new_state.Info);
                 if (res) {
                     new_state.LastState = currentState;
                     new_state.Operation = operation;
@@ -347,7 +355,7 @@ namespace MyPushBox {
         public override double GetEndDistance(GameState state) {
 
             List<MyPoint> boxs = state.Info.Boxes;
-            List<MyPoint> targets = GE.Targets;
+            List<MyPoint> targets = Engine.Targets;
 
             if (boxs.Count != targets.Count) {
                 throw new Exception("Boxes and targets number don't match.");
@@ -386,7 +394,7 @@ namespace MyPushBox {
         /// <returns></returns>
         public override bool IsEndState(GameState state) {
 
-            foreach (var target in GE.Targets) 
+            foreach (var target in Engine.Targets) 
             {
                 bool found = false;
                 foreach (var box in state.Info.Boxes) 
@@ -403,6 +411,42 @@ namespace MyPushBox {
             }
             return true;
         }
+
+        public override bool IsDeadState(GameState state)
+        {
+            if (CUT_BRANCHES)
+            {
+                foreach (var box in state.Info.Boxes)
+                {
+                    int x = box.X;
+                    int y = box.Y;
+
+                    if (Engine.GridMatrix[y, x] == GridType.Target)
+                    {
+                        continue;
+                    }
+
+                    bool leftDead = (x > 0) && (Engine.GridMatrix[y, x - 1] == GridType.Brick);
+                    bool rightDead = (x < Engine.ColumnNum - 1) &&
+                        (Engine.GridMatrix[y, x + 1] == GridType.Brick);
+                    bool upDead = (y > 0) && (Engine.GridMatrix[y - 1, x] == GridType.Brick);
+                    bool downDead = (y < Engine.RowNum - 1) &&
+                        (Engine.GridMatrix[y + 1, x] == GridType.Brick);
+
+                    if (leftDead && upDead || upDead && rightDead
+                        || rightDead && downDead || downDead && leftDead)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+
+            }
+            else {
+                return false;
+            }
+        }
     }
 
 
@@ -416,9 +460,9 @@ namespace MyPushBox {
         public AIPlayer() { 
         }
 
-        public void SetStartBoard(BoardInfo info, GameEngine GE) {
+        public void SetStartBoard(BoardInfo info, GameEngine engine) {
             GameState startState = new GameState(info);
-            PBP = new PushBoxProblem(startState, GE);
+            PBP = new PushBoxProblem(startState, engine);
         }
 
         public List<PlayerOperation> SearchPath()
