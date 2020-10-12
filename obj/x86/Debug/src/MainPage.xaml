@@ -10,7 +10,7 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <StackPanel >
-        <Grid x:ConnectionId='2' x:Name="grid_table" HorizontalAlignment="Center"
+        <Grid x:ConnectionId='2' x:Name="GridTable" HorizontalAlignment="Center"
               VerticalAlignment="Center">
 
         </Grid>

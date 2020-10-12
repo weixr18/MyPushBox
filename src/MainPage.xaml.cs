@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Drawing;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
@@ -18,82 +17,116 @@ using Windows.UI.Xaml.Media.Imaging;
 namespace MyPushBox
 {
 
+    /// <summary>
+    /// Main Page of the program.
+    /// </summary>
     public sealed partial class MainPage : Page
     {
-        private static Dictionary<char, GridType> BlockCode;
-        private static Dictionary<GridType, BitmapImage> BlockType;
-        private const int GRID_SIZE = 50;
-        private Image[,] Images;
-        public GameEngine GE;
-        public AIPlayer AI = new AIPlayer();
+        private class InfoPack
+        {
+            public BoardInfo Info;
+            public GameEngine Engine;
 
+            public InfoPack(BoardInfo info, GameEngine engine) {
+                Info = info;
+                Engine = engine;
+            }
+        }
+
+        private const int GRID_SIZE = 50;
+        private Dictionary<char, GridType> BlockCode = new Dictionary<char, GridType>();
+        private Dictionary<GridType, BitmapImage> BlockType = new Dictionary<GridType, BitmapImage>();
+        private BitmapImage BitGround = new BitmapImage(new Uri("ms-appx:///Assets/Block/Ground.jpg"));
+        private BitmapImage BitBrick = new BitmapImage(new Uri("ms-appx:///Assets/Block/Brick.jpg"));
+        private BitmapImage BitPlayer = new BitmapImage(new Uri("ms-appx:///Assets/Block/Player.jpg"));
+        private BitmapImage BitBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/Box.jpg"));
+        private BitmapImage BitTarget = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
+        private BitmapImage BitRedBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
+        private BitmapImage BitOutside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
+        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/2.txt");
+
+        private Image[,] Images;
+        public BoardInfo Info;
+        public GameEngine Engine;
+        public AIPlayer AI;
+
+        /// <summary>
+        /// checked.
+        /// </summary>
         public MainPage()
         {
             
             // layout component initialize
             this.InitializeComponent();
 
-            // UI hashmaps initialize
-            this.InitializeProperties();
+            // other properties initialize
+            this.InitializeMaps();
+            
+            var pack = GetBoardInfo().Result;
+            Engine = pack.Engine;
+            Info = pack.Info;
 
-            // game engine initialize
-            BoardInfo board = GetBoardInfo().Result;
-            GE = new GameEngine(board);
+            AI = new AIPlayer();
 
-            // grid initialize
+            // grid initialize and paint
             this.InitializeGrid();
+            this.RefreshGrid();
         }
 
+        /// <summary>
+        /// checked
+        /// </summary>
+        /// <param name="e"></param>
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             CoreWindow.GetForCurrentThread().KeyDown += Page_KeyDown;
         }
 
+        /// <summary>
+        /// checked
+        /// </summary>
+        /// <param name="e"></param>
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             CoreWindow.GetForCurrentThread().KeyDown -= Page_KeyDown;
         }
 
-
-        private void InitializeProperties() 
+        /// <summary>
+        /// checked.
+        /// </summary>
+        private void InitializeMaps() 
         {
 
-            BlockCode = new Dictionary<char, GridType>();
             BlockCode.Add('-', GridType.Ground);  
             BlockCode.Add('#', GridType.Brick);  
-            BlockCode.Add('@', GridType.Player);  
-            BlockCode.Add('$', GridType.Box);  
+            BlockCode.Add('@', GridType.Ground);  
+            BlockCode.Add('$', GridType.Ground);  
             BlockCode.Add('.', GridType.Target);  
             BlockCode.Add('_', GridType.OutSide);
-            BlockCode.Add('*', GridType.RedBox);
+            BlockCode.Add('*', GridType.Target);
 
-            BitmapImage bit_ground = new BitmapImage(new Uri("ms-appx:///Assets/Block/Ground.jpg"));
-            BitmapImage bit_brick = new BitmapImage(new Uri("ms-appx:///Assets/Block/Brick.jpg"));
-            BitmapImage bit_player = new BitmapImage(new Uri("ms-appx:///Assets/Block/Player.jpg"));
-            BitmapImage bit_box = new BitmapImage(new Uri("ms-appx:///Assets/Block/Box.jpg"));
-            BitmapImage bit_target = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
-            BitmapImage bit_red_box = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
-            BitmapImage bit_outside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
-
-            BlockType = new Dictionary<GridType, BitmapImage>();
-            BlockType.Add(GridType.Ground, bit_ground);
-            BlockType.Add(GridType.Brick, bit_brick);
-            BlockType.Add(GridType.Player, bit_player);
-            BlockType.Add(GridType.TarPlayer, bit_player);
-            BlockType.Add(GridType.Box, bit_box);
-            BlockType.Add(GridType.Target, bit_target);
-            BlockType.Add(GridType.RedBox, bit_red_box);
-            BlockType.Add(GridType.OutSide, bit_outside);
+            BlockType.Add(GridType.Ground, BitGround);
+            BlockType.Add(GridType.Brick, BitBrick);
+            BlockType.Add(GridType.Target, BitTarget);
+            BlockType.Add(GridType.OutSide, BitOutside);
         }
 
-        private async Task<BoardInfo> GetBoardInfo()
+        /// <summary>
+        /// Read the statistic and dynamic information from the file. checked.
+        /// </summary>
+        /// <returns></returns>
+        private async Task<InfoPack> GetBoardInfo()
         {
+            MyPoint player = new MyPoint(-1, -1);
+            List<MyPoint> boxes = new List<MyPoint>();
+            List<MyPoint> targets = new List<MyPoint>();
+            GridType[,] gridMatrix;
             BoardInfo info;
-            int player_x = -1;
-            int player_y = -1;
+            GameEngine engine;
+
             try
             {
-                var uri = new Uri("ms-appx:///Assets/Stages/2.txt");
+                var uri = FileUri;
                 var file = await StorageFile.GetFileFromApplicationUriAsync(uri).AsTask().ConfigureAwait(false);
                 var encoding = Encoding.GetEncoding("utf-8");
 
@@ -101,20 +134,18 @@ namespace MyPushBox
                 {
                     using (StreamReader reader = new StreamReader(stream, encoding, false))
                     {
-                        string line;
-
-                        line = reader.ReadLine();
+                        string line = reader.ReadLine();
                         if (line == null)
                         {
                             throw new FileLoadException("Wrong Stage File Format.");
                         }
-                        string[] numStrings = line.Split(' ');
-                        int rowCount = Convert.ToInt32(numStrings[0], 10);
-                        int columnCount = Convert.ToInt32(numStrings[1], 10);
-                        Point player = new Point(0, 0);
-                        info = new BoardInfo(rowCount, columnCount, player);
 
-                        for (int i = 0; i < rowCount; i++)
+                        string[] numStrings = line.Split(' ');
+                        int rowNum = Convert.ToInt32(numStrings[0], 10);
+                        int columnCount = Convert.ToInt32(numStrings[1], 10);
+                        gridMatrix = new GridType[rowNum, columnCount];
+
+                        for (int i = 0; i < rowNum; i++)
                         {
                             line = reader.ReadLine();
                             if (line == null)
@@ -128,83 +159,146 @@ namespace MyPushBox
 
                             for (int j = 0; j < columnCount; j++)
                             {
-                                info.d[i, j] = BlockCode[line[j]];
-                                if (info.d[i, j] == GridType.Player)
+                                gridMatrix[i, j] = BlockCode[line[j]];
+
+                                if (line[j] == '@')
                                 {
+                                    // player
+                                    player.Y = i;
+                                    player.X = j;
                                     // i is row index -- y
                                     // j is column index -- x
-                                    player_x = j;
-                                    player_y = i;
                                 }
+                                else if (line[j] == '$') 
+                                {
+                                    // box
+                                    var box = new MyPoint(j, i);
+                                    boxes.Add(box);
+                                }
+                                else if (line[j] == '*')
+                                {
+                                    // red box
+                                    var box = new MyPoint(j, i);
+                                    boxes.Add(box);
+                                    var target = new MyPoint(j, i);
+                                    targets.Add(target);
+                                }
+                                else if (line[j] == '.')
+                                {
+                                    // target list: only for the AI.
+                                    var target = new MyPoint(j, i);
+                                    targets.Add(target);
+                                }
+
                             }
                         }
 
-                        if (player_x < 0 || player_y < 0)
+                        if (player.X < 0 || player.Y < 0)
                         {
                             throw new FileLoadException("No Player Position in Stage File.");
                         }
 
-                        info.p.X = player_x;
-                        info.p.Y = player_y;
+                        info = new BoardInfo(player, boxes);
+                        engine = new GameEngine(gridMatrix, targets);
                        
                     }
                 }
 
-                return info;
+                return new InfoPack(info, engine);
             }
             catch (Exception e)
             {
                 Debug.WriteLine("The file could not be read:");
                 Debug.WriteLine(e.Message);
-                return new BoardInfo(0, 0, new Point(0, 0));
+                return null;
             }
         }
 
+        /// <summary>
+        /// Initialize the grids. Checked.
+        /// </summary>
         private void InitializeGrid()
         {
-            int rowCount = GE.rowNum;
-            int colCount = GE.columnNum;
-            Grid g = grid_table;
-            Images = new Image[rowCount, colCount];
+            int rowNum = Engine.RowNum;
+            int columnNum = Engine.ColumnNum;
+            Grid g = GridTable;
+            Images = new Image[rowNum, columnNum];
 
 
-            for (int i = 0; i < rowCount; i++)
+            for (int i = 0; i < rowNum; i++)
             {
                 RowDefinition rd = new RowDefinition();
                 rd.Height = new GridLength(GRID_SIZE);
                 g.RowDefinitions.Add(rd);
             }
 
-            for (int i = 0; i < colCount; i++)
+            for (int i = 0; i < columnNum; i++)
             {
                 ColumnDefinition rd = new ColumnDefinition();
                 rd.Width = new GridLength(GRID_SIZE);
                 g.ColumnDefinitions.Add(rd);
             }
 
-            this.RefreshGrid();
         }
 
+
+        /// <summary>
+        /// Refresh the grids according to GameEngine and BoardInfo. Checked.
+        /// </summary>
         private void RefreshGrid() {
 
-            int rowCount = GE.rowNum;
-            int colCount = GE.columnNum;
-            GridType[,] d = GE.d;
+            int rowNum = Engine.RowNum;
+            int columnNum = Engine.ColumnNum;
+            GridType[,] g = Engine.GridMatrix;
+            Image img;
 
-            for (int r = 0; r < rowCount; r++)
+            // background
+            for (int r = 0; r < rowNum; r++)
             {
-                for (int c = 0; c < colCount; c++)
+                for (int c = 0; c < columnNum; c++)
                 {
-                    Image img = new Image();
+                    img = new Image();
                     Images[r, c] = img;
-                    img.Source = BlockType[d[r, c]];
-                    grid_table.Children.Add(img);
+                    img.Source = BlockType[g[r, c]];
+                    GridTable.Children.Add(img);
                     Grid.SetColumn(img, c);
                     Grid.SetRow(img, r);
                 }
             }
+
+            // player
+            img = new Image();
+            Images[Info.Player.Y, Info.Player.X] = img;
+            img.Source = BitPlayer;     // player will cover the target.
+            GridTable.Children.Add(img);
+            Grid.SetColumn(img, Info.Player.X);
+            Grid.SetRow(img, Info.Player.Y);
+            
+
+            // boxes
+            foreach (var box in Info.Boxes)
+            {
+                img = new Image();
+                Images[box.Y, box.X] = img;
+
+                if (g[box.Y, box.X] == GridType.Target) 
+                    img.Source = BitRedBox;
+                else 
+                    img.Source = BitBox;
+                
+                GridTable.Children.Add(img);
+                Grid.SetColumn(img, box.X);
+                Grid.SetRow(img, box.Y);
+            }
+
         }
 
+
+        /// <summary>
+        /// Responding to keyboard press down events. Checked.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
         private void Page_KeyDown(CoreWindow sender, KeyEventArgs args)
         {
             VirtualKey virtualKey = args.VirtualKey;
@@ -213,28 +307,28 @@ namespace MyPushBox
                 case VirtualKey.W:
                 case VirtualKey.Up:
                 {
-                    GE.PlayerOperate(PlayerOperation.MoveUp);
+                    Engine.PlayerOperate(PlayerOperation.MoveUp, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.S:
                 case VirtualKey.Down:
                 {
-                    GE.PlayerOperate(PlayerOperation.MoveDown);
+                    Engine.PlayerOperate(PlayerOperation.MoveDown, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.D:
                 case VirtualKey.Right:
                 {
-                    GE.PlayerOperate(PlayerOperation.MoveRight);
+                    Engine.PlayerOperate(PlayerOperation.MoveRight, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.A:
                 case VirtualKey.Left:
                 {
-                    GE.PlayerOperate(PlayerOperation.MoveLeft);
+                    Engine.PlayerOperate(PlayerOperation.MoveLeft, Info);
                     RefreshGrid();
                     break;
                 }
@@ -245,9 +339,15 @@ namespace MyPushBox
             }
         }
 
+
+        /// <summary>
+        /// Start the search. Checked.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Start_Button_Clicked(object sender, RoutedEventArgs e)
         {
-            AI.SetStartBoard(GE.Board, GE);
+            AI.SetStartBoard(Info, Engine);
             Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));
             var path = AI.SearchPath();
             Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));

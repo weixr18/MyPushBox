@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Drawing;
+using System.Collections.Generic;
 
 /*
  * TARGET:
@@ -13,6 +13,7 @@ using System.Drawing;
  *     > targets
  *     > 墙壁地面等
  *    GameState/BoardInfo均不能完全表示状态，需要和一个GE配合
+ *    GE 不包含 BI
  * 2.1 读盘直接生成GE和BoardInfo，GE不依赖于BoardInfo
  * 2.2 用户单步操作只改变BI
  * 2.3 UI更新：根据GE和BI
@@ -31,21 +32,22 @@ using System.Drawing;
 
 namespace MyPushBox
 {
-
+    /// <summary>
+    /// Type of Grid. Checked.
+    /// </summary>
     public enum GridType
     {
         Ground = 1,
         Target = 2,
-        Box = 3,
-        RedBox = 4,
-        Player = 5,
-        TarPlayer = 6,
-        Brick = 7,
-        OutSide = 8,
+        Brick = 3,
+        OutSide = 4,
 
         // RedBox 只能和 Target 互相转化！！！
     }
 
+    /// <summary>
+    /// Operation of Player. Checked.
+    /// </summary>
     public enum PlayerOperation
     {
         MoveUp,
@@ -54,307 +56,230 @@ namespace MyPushBox
         MoveLeft,
     }
 
+    public class MyPoint {
+        public int X { get; set; }
+        public int Y { get; set; }
 
+        public MyPoint(int x, int y) {
+            X = x;
+            Y = y;
+        }
+
+        public bool Equals(MyPoint p)
+        {
+            return (this.X == p.X) && (this.Y == p.Y);
+        }
+
+        public override string ToString()
+        {
+            return String.Format("X:{0:G}, Y:{1:G}\n", X, Y);
+        }
+    }
+
+    /// <summary>
+    /// Dynamic information of the game. Checked.
+    /// </summary>
     public class BoardInfo
     {
-        public int rowNum { get; }
-        public int columnNum { get; }
-        public GridType[,] d;
-        public Point p;
+        
+        public List<MyPoint> Boxes;
 
-        public BoardInfo(int r, int c, Point _p)
+        /// <summary>
+        /// Player Position. Attention that : 
+        /// (X -- column index -- matrix axis 1) and 
+        /// (Y -- row index -- matrix axis 0)
+        /// </summary>
+        public MyPoint Player;
+
+        public BoardInfo(MyPoint player, List<MyPoint> boxes)
         {
-            rowNum = r;
-            columnNum = c;
-            d = new GridType[r, c];
-            p = new Point(_p.X, _p.Y);
+            Player = player;
+            Boxes = boxes;
         }
 
         public BoardInfo Clone() {
-            BoardInfo info = new BoardInfo(rowNum, columnNum, p);
-            for (int i = 0; i < rowNum; i++) {
-                for (int j = 0; j < columnNum; j++) {
-                    info.d[i, j] = this.d[i, j];
-                }
-            }
+            var player = new MyPoint(Player.X, Player.Y);
+            var boxes = new List<MyPoint>(Boxes);
+
+            BoardInfo info = new BoardInfo(player, boxes);
             return info;
+        }
+
+        public bool Equals(BoardInfo obj)
+        {
+            return Player.Equals(obj.Player) && Boxes.Equals(obj.Boxes);
         }
     }
 
 
-
+    /// <summary>
+    /// Game Engine. Not done.
+    /// </summary>
     public class GameEngine {
+        
+        /// <summary>
+        /// Row number of the field.
+        /// </summary>
+        public int RowNum { get; }
 
-        public BoardInfo Board;
+        /// <summary>
+        /// Column number of the field.
+        /// </summary>
+        public int ColumnNum { get; }
 
-        public int rowNum 
-        { 
-            get { return Board.rowNum; }
+        /// <summary>
+        /// Target positions of the boxes. Statistic.
+        /// </summary>
+        public List<MyPoint> Targets;
+
+        /// <summary>
+        /// Static information of the field. A Matrix of grid types. Statistic.
+        /// </summary>
+        public GridType[,] GridMatrix { get; }
+
+
+        /// <summary>
+        /// Initialization of Game Engine.
+        /// </summary>
+        /// <param name="g">Matrix of the grid types.</param>
+        public GameEngine(GridType[,] g, List<MyPoint> targets) {
+            RowNum = g.GetLength(0);
+            ColumnNum = g.GetLength(1);
+            Targets = targets;
+            GridMatrix = g;
         }
 
-        public int columnNum 
-        {
-            get { return Board.columnNum; }
-        }
-
-        public GridType[,] d 
-        {
-            get { return Board.d; }
-        }
-
-        public Point p
-        {
-            get { return Board.p; }
-            set { Board.p = (value); }
-        }
-
-        public GameEngine(BoardInfo b) {
-            Board = b;
-        }
-
-        public bool PlayerOperate(PlayerOperation o) {
-            return PlayerOperate(o, this.Board);
-        }
-
-
+        /// <summary>
+        /// Operate the move according to Operation o and dynamic info.
+        /// </summary>
+        /// <param name="o">Movement</param>
+        /// <param name="info">Dynamic info</param>
+        /// <returns>Whether the operation is available.</returns>
         public bool PlayerOperate(PlayerOperation o, BoardInfo info) {
-            /**
-            * Get variables.
-            */
 
-            int bg_y = -1;
-            int bg_x = -1;
-            int nxt_y = -1;
-            int nxt_x = -1;
-            bool hasNextGrid = false;
+            // Prepare variables.
+
+            int rowNum = RowNum;
+            int columnNum = ColumnNum;
+            int playerX = info.Player.X;
+            int playerY = info.Player.Y;
+
+            int nxtY = -1;
+            int nxtX = -1;
+            int altY = -1;
+            int altX = -1;
+            bool hasAlternateGrid = false;
 
             switch (o)
             {
                 case PlayerOperation.MoveUp:
                 {
-                    if (info.p.Y == 0)
-                    {
-                        return false;
-                    }
-                    bg_y = info.p.Y - 1;
-                    bg_x = info.p.X;
-                    nxt_y = info.p.Y - 2;
-                    nxt_x = info.p.X;
-                    hasNextGrid = (info.p.Y > 1);
-
+                    if (playerY == 0)
+                       return false;
+                    nxtY = playerY - 1;
+                    nxtX = playerX;
+                    altY = playerY - 2;
+                    altX = playerX;
+                    hasAlternateGrid = (playerY > 1);
                     break;
                 }
                 case PlayerOperation.MoveDown:
                 {
-                    if (info.p.Y == info.rowNum - 1)
-                    {
+                    if (playerY == rowNum - 1)
                         return false;
-                    }
-
-                    bg_y = info.p.Y + 1;
-                    bg_x = info.p.X;
-                    nxt_y = info.p.Y + 2;
-                    nxt_x = info.p.X;
-                    hasNextGrid = (info.p.Y < info.rowNum - 2);
-
+                    nxtY = playerY + 1;
+                    nxtX = playerX;
+                    altY = playerY + 2;
+                    altX = playerX;
+                    hasAlternateGrid = (playerY < rowNum - 2);
                     break;
                 }
                 case PlayerOperation.MoveLeft:
                 {
-                    if (info.p.X == 0)
-                    {
+                    if (playerX == 0)
                         return false;
-                    }
-
-                    bg_y = info.p.Y;
-                    bg_x = info.p.X - 1;
-                    nxt_y = info.p.Y;
-                    nxt_x = info.p.X - 2;
-                    hasNextGrid = (info.p.X > 1);
-
+                    nxtY = playerY;
+                    nxtX = playerX - 1;
+                    altY = playerY;
+                    altX = playerX - 2;
+                    hasAlternateGrid = (playerX > 1);
                     break;
                 }
                 case PlayerOperation.MoveRight:
                 {
-                    if (info.p.X == info.columnNum - 1)
-                    {
+                    if (playerX == columnNum - 1)
                         return false;
-                    }
-
-                    bg_y = info.p.Y;
-                    bg_x = info.p.X + 1;
-                    nxt_y = info.p.Y;
-                    nxt_x = info.p.X + 2;
-                    hasNextGrid = (info.p.X < info.columnNum - 2);
-
+                    nxtY = playerY;
+                    nxtX = playerX + 1;
+                    altY = playerY;
+                    altX = playerX + 2;
+                    hasAlternateGrid = (playerX < columnNum - 2);
                     break;
                 }
             }
 
-            /**
-             * Logic Judgement.
-             */
-
-            if (info.d[bg_y, bg_x] == GridType.Brick)
+            
+            // Logic Judgement.
+             
+            // next is brick
+            if (GridMatrix[nxtY, nxtX] == GridType.Brick)
             {
                 return false;
             }
-            // move to ground
-            else if (info.d[bg_y, bg_x] == GridType.Ground)
+
+            // next is not brick
+            else if (GridMatrix[nxtY, nxtX] == GridType.Ground || GridMatrix[nxtY, nxtX] == GridType.Target)
             {
-                info.d[bg_y, bg_x] = GridType.Player;
+                if (!hasAlternateGrid) {
+                    throw new Exception("Map data invalid error.");
+                }
+                if (GridMatrix[altY, altX] == GridType.OutSide) {
+                    throw new Exception("Map data invalid error.");
+                }
 
-                if (info.d[info.p.Y, info.p.X] == GridType.TarPlayer)
+                // Search if there is a box to move.
+
+                foreach(var box in info.Boxes)
                 {
-                    info.d[info.p.Y, info.p.X] = GridType.Target;
-                }
-                else
-                {
-                    info.d[info.p.Y, info.p.X] = GridType.Ground;
-                }
+                    if (nxtY == box.Y && nxtX == box.X)
+                    {
+                        // alternate grid is brick
+                        if (GridMatrix[altY, altX] == GridType.Brick)
+                        {
+                            return false;
+                        }
+                        else 
+                        {
+                            // if alternate grid has a box, cannot move.
+                            foreach (var boxB in info.Boxes)
+                            {
+                                if (boxB.Y == altY && boxB.X == altX)
+                                {
+                                    return false;
+                                }
+                            }
+
+                            // now the box could be moved.
+                            box.Y = altY;
+                            box.X = altX;
+                            break;
+                        }
+                    }
+                };
+
+                // Move the player.
+                info.Player.Y = nxtY;
+                info.Player.X = nxtX;
+
+                return true;
             }
-            // move to target
-            else if (info.d[bg_y, bg_x] == GridType.Target)
-            {
-                info.d[bg_y, bg_x] = GridType.TarPlayer;
-                if (info.d[info.p.Y, info.p.X] == GridType.TarPlayer)
-                {
-                    info.d[info.p.Y, info.p.X] = GridType.Target;
-                }
-                else
-                {
-                    info.d[info.p.Y, info.p.X] = GridType.Ground;
-                }
-            }
-            // push box
-            else if (info.d[bg_y, bg_x] == GridType.Box)
-            {
-                if (!hasNextGrid)
-                {
-                    return false;
-                }
-
-                if (info.d[nxt_y, nxt_x] == GridType.Ground
-                    || info.d[nxt_y, nxt_x] == GridType.Target)
-                {
-                    // self
-                    if (info.d[info.p.Y, info.p.X] == GridType.TarPlayer)
-                    {
-                        info.d[info.p.Y, info.p.X] = GridType.Target;
-                    }
-                    else
-                    {
-                        info.d[info.p.Y, info.p.X] = GridType.Ground;
-                    }
-
-                    // bg
-                    info.d[bg_y, bg_x] = GridType.Player;
-
-                    // next
-                    if (info.d[nxt_y, nxt_x] == GridType.Ground)
-                    {
-                        info.d[nxt_y, nxt_x] = GridType.Box;
-                    }
-                    else if (info.d[nxt_y, nxt_x] == GridType.Target)
-                    {
-                        info.d[nxt_y, nxt_x] = GridType.RedBox;
-                    }
-
-
-                }
-                else if (info.d[nxt_y, nxt_x] == GridType.Brick
-                    || info.d[nxt_y, nxt_x] == GridType.Box
-                    || info.d[nxt_y, nxt_x] == GridType.RedBox)
-                {
-                    return false;
-                }
-                else
-                {
-                    throw new Exception("Map Data damaged.");
-                }
-            }
-            // push red box
-            else if (info.d[bg_y, bg_x] == GridType.RedBox)
-            {
-                if (!hasNextGrid)
-                {
-                    return false;
-                }
-                if (info.d[nxt_y, nxt_x] == GridType.Ground
-                    || info.d[nxt_y, nxt_x] == GridType.Target)
-                {
-
-                    // self
-                    if (info.d[info.p.Y, info.p.X] == GridType.TarPlayer)
-                    {
-                        info.d[info.p.Y, info.p.X] = GridType.Target;
-                    }
-                    else
-                    {
-                        info.d[info.p.Y, info.p.X] = GridType.Ground;
-                    }
-
-                    // bg
-                    info.d[bg_y, bg_x] = GridType.TarPlayer;
-
-                    // next
-                    if (info.d[nxt_y, nxt_x] == GridType.Ground)
-                    {
-                        info.d[nxt_y, nxt_x] = GridType.Box;
-                    }
-                    else if (info.d[nxt_y, nxt_x] == GridType.Target)
-                    {
-                        info.d[nxt_y, nxt_x] = GridType.RedBox;
-                    }
-
-                }
-                else if (info.d[nxt_y, nxt_x] == GridType.Brick
-                    || info.d[nxt_y, nxt_x] == GridType.Box
-                    || info.d[nxt_y, nxt_x] == GridType.RedBox)
-                {
-                    return false;
-                }
-                else
-                {
-                    throw new Exception("Map Data damaged.");
-                }
-            }
+            
             // wrong GameState
             else
             {
                 throw new Exception("Map Data damaged.");
             }
-
-            /**
-             * Move player
-             */
-            switch (o)
-            {
-                case PlayerOperation.MoveUp:
-                {
-                    info.p.Y -= 1;
-                    break;
-                }
-                case PlayerOperation.MoveDown:
-                {
-                    info.p.Y += 1;
-                    break;
-                }
-                case PlayerOperation.MoveLeft:
-                {
-                    info.p.X -= 1;
-                    break;
-                }
-                case PlayerOperation.MoveRight:
-                {
-                    info.p.X += 1;
-                    break;
-                }
-            }
-
-            return true;
+            
         }
-
-
     }
 }

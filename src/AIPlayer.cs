@@ -10,21 +10,24 @@ using System.Collections.Generic;
 
 namespace MyPushBox {
 
+    /// <summary>
+    /// The State of game. Checked.
+    /// </summary>
     class GameState : IComparable
     {
         
-        public BoardInfo bi;
-        public double path_cost;
-        public double distance_cost;
-        public GameState last_GameState;
-        public PlayerOperation o;
+        public BoardInfo Info;
+        public double PathCost;
+        public double DistanceCost;
+        public GameState LastState;
+        public PlayerOperation Operation;
 
         public GameState(BoardInfo info)
         {
 
-            this.bi = (BoardInfo)info.Clone();
-            this.distance_cost = -1;
-            this.path_cost = -1;
+            this.Info = (BoardInfo)info.Clone();
+            this.DistanceCost = -1;
+            this.PathCost = -1;
         }
 
         public int CompareTo(Object obj)
@@ -45,56 +48,56 @@ namespace MyPushBox {
             }
         }
 
-        public static bool operator <(GameState s1, GameState s2)
+        public static bool operator <(GameState stateA, GameState stateB)
         {
-            return (s1.path_cost + s1.distance_cost) < (s2.path_cost + s2.distance_cost);
+            return (stateA.PathCost + stateA.DistanceCost) < (stateB.PathCost + stateB.DistanceCost);
         }
 
-        public static bool operator >(GameState s1, GameState s2)
+        public static bool operator >(GameState stateA, GameState stateB)
         {
-            return (s1.path_cost + s1.distance_cost) > (s2.path_cost + s2.distance_cost);
+            return (stateA.PathCost + stateA.DistanceCost) > (stateB.PathCost + stateB.DistanceCost);
         }
 
-        public static bool operator ==(GameState s1, GameState s2)
+        public static bool operator ==(GameState stateA, GameState stateB)
         {
-            if ((s1 as object) == null)
+            if ((stateA as object) == null)
             {
-                return (s2 as object) == null;
+                return (stateB as object) == null;
             }
 
-            else if ((s2 as object) == null)
+            else if ((stateB as object) == null)
             {
                 return false;
             }
 
-            return s1.bi.d.Equals(s2.bi.d);
+            return stateA.Info.Equals(stateB.Info);
         }
 
-        public static bool operator !=(GameState s1, GameState s2)
+        public static bool operator !=(GameState stateA, GameState stateB)
         {
 
-            if ((s1 as object) == null)
+            if ((stateA as object) == null)
             {
-                return (s2 as object) != null;
+                return (stateB as object) != null;
             }
 
-            else if ((s2 as object) == null)
+            else if ((stateB as object) == null)
             {
                 return true;
             }
 
 
-            return !s1.bi.d.Equals(s2.bi.d);
+            return !stateA.Info.Equals(stateB.Info);
         }
 
         public override string ToString()
         {
             String s = "";
-            s += String.Format("  player position: ({0:G}, {1:G})\n", bi.p.Y, bi.p.X);
+            s += String.Format("  player position: ({0:G}, {1:G})\n", Info.Player.X, Info.Player.Y);
             s += String.Format(
                 "  (path, distance, sum): ({0:G}, {1:G}, {2:G})\n",
-                this.path_cost, this.distance_cost,
-                this.path_cost + this.distance_cost
+                this.PathCost, this.DistanceCost,
+                this.PathCost + this.DistanceCost
                 );
             return s;
         }
@@ -114,147 +117,57 @@ namespace MyPushBox {
 
         public override int GetHashCode()
         {
-            return bi.d.GetHashCode();
+            return Info.GetHashCode();
         }
 
     }
 
-    class PriorityQueue<T>
-    {
-        IComparer<T> comparer;
-        public T[] heap;
 
-        public int Count { get; private set; }
-
-        public PriorityQueue() : this(null) { }
-        public PriorityQueue(int capacity) : this(capacity, null) { }
-        public PriorityQueue(IComparer<T> comparer) : this(16, comparer) { }
-
-        public PriorityQueue(int capacity, IComparer<T> comparer)
-        {
-            this.comparer = (comparer == null) ? Comparer<T>.Default : comparer;
-            this.heap = new T[capacity];
-        }
-
-        public void Push(T v)
-        {
-            if (Count >= heap.Length) Array.Resize(ref heap, Count * 2);
-            heap[Count] = v;
-            SiftUp(Count++);
-        }
-
-        public T Pop()
-        {
-            var v = Top();
-            heap[0] = heap[--Count];
-            if (Count > 0) SiftDown(0);
-            return v;
-        }
-
-        public T Top()
-        {
-            if (Count > 0) return heap[0];
-            throw new InvalidOperationException("优先队列为空");
-        }
-
-        void SiftUp(int n)
-        {
-            var v = heap[n];
-            for (var n2 = n / 2; n > 0 && comparer.Compare(v, heap[n2]) > 0; n = n2, n2 /= 2) heap[n] = heap[n2];
-            heap[n] = v;
-        }
-
-        void SiftDown(int n)
-        {
-            var v = heap[n];
-            for (var n2 = n * 2; n2 < Count; n = n2, n2 *= 2)
-            {
-                if (n2 + 1 < Count && comparer.Compare(heap[n2 + 1], heap[n2]) > 0) n2++;
-                if (comparer.Compare(v, heap[n2]) >= 0) break;
-                heap[n] = heap[n2];
-            }
-            heap[n] = v;
-        }
-
-        public bool Has(T v)
-        {
-            for (int i = 0; i < heap.GetLength(0); i++)
-            {
-                if (heap[i].Equals(v))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public void Heapify()
-        {
-            int n = heap.GetLength(0);
-
-            for (int i = n / 2; i >= 0; i--)
-            {
-                SiftUp(i);
-            }
-
-            /*
-            Transform bottom-up.  The largest index there's any point to looking at
-            is the largest with a child index in-range, so must have 2*i + 1 < n,
-            or i < (n-1)/2.  If n is even = 2*j, this is (2*j-1)/2 = j-1/2 so
-            j-1 is the largest, which is n//2 - 1.  If n is odd = 2*j+1, this is
-            (2*j+1-1)/2 = j so j-1 is the largest, and that's again n//2-1.
-            */
-
-            //for i in reversed(range(n//2)):
-            //    _siftup(x, i)
-
-        }
-    }
-
+    /// <summary>
+    /// A State Search Problem Framework. Supports A(AStar) algorithm.
+    /// Checked.
+    /// </summary>
     abstract class GameStateProblem
     {
-        protected PriorityQueue<GameState> open_queue;
-        protected HashSet<GameState> close_list;
+        protected PriorityQueue<GameState> OpenQueue;
+        protected HashSet<GameState> CloseList;
+        protected GameState StartState;
 
-        protected GameState start_GameState;
 
-
-        public GameStateProblem(GameState start_GameState)
+        public GameStateProblem(GameState StartState)
         {
-            
-            this.open_queue = new PriorityQueue<GameState>(6000);
-            this.close_list = new HashSet<GameState>(37000);
-            start_GameState.last_GameState = null;
-            start_GameState.o = 0;
-            start_GameState.path_cost = 0;
-            this.start_GameState = start_GameState;
+            this.OpenQueue = new PriorityQueue<GameState>(6000);
+            this.CloseList = new HashSet<GameState>(37000);
+            StartState.LastState = null;
+            StartState.Operation = 0;
+            StartState.PathCost = 0;
+            this.StartState = StartState;
         }
 
-        public abstract List<GameState> GetNextGameStates(GameState current_GameState);
-
+        public abstract List<GameState> GetNextGameStates(GameState currentState);
         public abstract double GetEndDistance(GameState s);
 
         public abstract bool IsEndState(GameState s);
 
         public List<PlayerOperation> RunAStar()
         {
-            this.open_queue.Push(start_GameState);
-            int round_num = 0;
-            GameState current_GameState = null;
-            List<GameState> next_GameStates;
+            this.OpenQueue.Push(StartState);
+            int roundNum = 0;
+            GameState currentState = null;
+            List<GameState> nextStates;
 
             while (true)
             {
 #if _DEBUG_
-                if(round_num % 10 == 0)
-                    Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", round_num, this.open_queue.Count));
+                if(roundNum % 10 == 0)
+                    Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", roundNum, this.OpenQueue.Count));
 #endif
-                round_num += 1;
-                //Console.WriteLine(String.Format("{0:G} {1:G}", this.open_queue.Count, this.close_list.Count));
+                roundNum += 1;
+                //Console.WriteLine(String.Format("{0:G} {1:G}", this.OpenQueue.Count, this.CloseList.Count));
 
                 try
                 {
-                    current_GameState = this.open_queue.Pop();
+                    currentState = this.OpenQueue.Pop();
                 }
                 catch (System.InvalidOperationException e)
                 {
@@ -263,51 +176,51 @@ namespace MyPushBox {
                 }
 
                 //Debug.WriteLine("Current:");
-                //Debug.WriteLine(current_GameState);
-                this.close_list.Add(current_GameState);
+                //Debug.WriteLine(currentState);
+                this.CloseList.Add(currentState);
 
-                if (IsEndState(current_GameState))
+                if (IsEndState(currentState))
                 {
                     Debug.WriteLine("-----------Shortest path found.-----------");
-                    GameState tmp_GameState = current_GameState;
+                    GameState tmp_GameState = currentState;
                     int tmp_n = 0;
                     Stack<GameState> path_stack = new Stack<GameState>();
                     var res = new List<PlayerOperation>();
 
-                    while (tmp_GameState.last_GameState != null)
+                    while (tmp_GameState.LastState != null)
                     {
                         //Console.WriteLine("{0:G}:\n", tmp_n);
                         //Console.WriteLine(tmp_GameState);
                         path_stack.Push(tmp_GameState);
-                        tmp_GameState = tmp_GameState.last_GameState;
+                        tmp_GameState = tmp_GameState.LastState;
                         tmp_n += 1;
                     }
                     while (path_stack.Count > 0) {
                         tmp_GameState = path_stack.Pop();
-                        res.Add(tmp_GameState.o);
+                        res.Add(tmp_GameState.Operation);
                     }
                     return res;
                 }
                 else
                 {
-                    next_GameStates = this.GetNextGameStates(current_GameState);
+                    nextStates = this.GetNextGameStates(currentState);
 
-                    foreach (GameState s in next_GameStates)
+                    foreach (GameState s in nextStates)
                     {
-                        if (s == current_GameState.last_GameState)
+                        if (s == currentState.LastState)
                         {
                             // father
                             continue;
                         }
                         
-                        else if (this.close_list.Contains(s))
+                        else if (this.CloseList.Contains(s))
                         {
                             // closed
-                            if (s.path_cost > current_GameState.path_cost + 1)
+                            if (s.PathCost > currentState.PathCost + 1)
                             {
-                                this.close_list.Remove(s);
-                                s.path_cost = current_GameState.path_cost + 1;
-                                this.open_queue.Push(s);
+                                this.CloseList.Remove(s);
+                                s.PathCost = currentState.PathCost + 1;
+                                this.OpenQueue.Push(s);
                                 Debug.WriteLine("Remove close.");
 #if _DEBUG_
                                 
@@ -324,23 +237,23 @@ namespace MyPushBox {
                             continue;
                         }
                         
-                        else if (s.path_cost < 0)
+                        else if (s.PathCost < 0)
                         {
-                            s.path_cost = current_GameState.path_cost + 1;
-                            this.open_queue.Push(s);
+                            s.PathCost = currentState.PathCost + 1;
+                            this.OpenQueue.Push(s);
 #if _DEBUG_
                             Console.WriteLine("Add open.");
                             Console.WriteLine(s);
 #endif
                             continue;
                         }
-                        else if (this.open_queue.Has(s))
+                        else if (this.OpenQueue.Has(s))
                         {
-                            if (s.path_cost > current_GameState.path_cost + 1)
+                            if (s.PathCost > currentState.PathCost + 1)
                             {
                                 // Pop s from queue, refresh path, then put it back.
-                                s.path_cost = current_GameState.path_cost + 1;
-                                this.open_queue.Heapify();
+                                s.PathCost = currentState.PathCost + 1;
+                                this.OpenQueue.Heapify();
 #if _DEBUG_
                                 Console.WriteLine("Refresh open.");
                                 Console.WriteLine(s);
@@ -362,7 +275,7 @@ namespace MyPushBox {
 
                     /*
                     Console.WriteLine("Open queue:");
-                    foreach (GameState s in this.open_queue.heap)
+                    foreach (GameState s in this.OpenQueue.heap)
                     {
                         if (s != null)
                         {
@@ -371,7 +284,7 @@ namespace MyPushBox {
                     }
 
                     Console.WriteLine("Closed list:");
-                    foreach (GameState s in this.close_list)
+                    foreach (GameState s in this.CloseList)
                     {
 
                         Console.WriteLine(s);
@@ -382,31 +295,39 @@ namespace MyPushBox {
         }
     }
 
+
+    /// <summary>
+    /// Implementation of the GSP Framework on PushBox game. Checked.
+    /// </summary>
     class PushBoxProblem : GameStateProblem {
 
         GameEngine GE;
 
-        public PushBoxProblem(GameState start_state, GameEngine _GE)
-            : base(start_state)
+        public PushBoxProblem(GameState startState, GameEngine gameEngine)
+            : base(startState)
         {
-            GE = _GE;
+            GE = gameEngine;
         }
 
-        public override List<GameState> GetNextGameStates(GameState current_state) {
-            
+        /// <summary>
+        /// Generate possible game states from current state.
+        /// </summary>
+        /// <param name="currentState"></param>
+        /// <returns></returns>
+        public override List<GameState> GetNextGameStates(GameState currentState) 
+        {
             var list = new List<GameState>();
 
-            foreach (PlayerOperation o in 
-                Enum.GetValues(typeof(PlayerOperation))) {
+            foreach (PlayerOperation operation in 
+                Enum.GetValues(typeof(PlayerOperation))) 
+            {
 
-                GameState new_state = new GameState(current_state.bi);
-                
-                var res = GE.PlayerOperate(o, new_state.bi);
+                GameState new_state = new GameState(currentState.Info);
+                var res = GE.PlayerOperate(operation, new_state.Info);
                 if (res) {
-                    new_state.last_GameState = current_state;
-                    new_state.o = o;
-                    new_state.distance_cost = GetEndDistance(new_state);
-
+                    new_state.LastState = currentState;
+                    new_state.Operation = operation;
+                    new_state.DistanceCost = GetEndDistance(new_state);
                     list.Add(new_state);
                 }
             }
@@ -414,31 +335,19 @@ namespace MyPushBox {
             return list;
         }
 
-        public override double GetEndDistance(GameState s) {
 
-            List<Point> boxs = new List<Point>();
-            List<Point> targets = new List<Point>();
-            GridType[,] d = s.bi.d;
+        /// <summary>
+        /// Get the distance from this to end.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public override double GetEndDistance(GameState state) {
 
-            /// get boxes and targets
-            for (int i = 0; i < s.bi.rowNum; i++) 
-            {
-                for (int j = 0; j < s.bi.columnNum; j++) 
-                {
-                    if (d[i, j] == GridType.Box)
-                    {
-                        boxs.Add(new Point(i, j));
-                    }
-                    else if (d[i, j] == GridType.Target
-                         || d[i, j] == GridType.TarPlayer) 
-                    {
-                        targets.Add(new Point(i, j));
-                    }
-                }
-            }
+            List<MyPoint> boxs = state.Info.Boxes;
+            List<MyPoint> targets = GE.Targets;
 
             if (boxs.Count != targets.Count) {
-                throw new Exception("Boxes and targets don't match.");
+                throw new Exception("Boxes and targets number don't match.");
             }
 
             /// get each distance
@@ -457,20 +366,33 @@ namespace MyPushBox {
             return res;
         }
 
-        private int Manhatton(Point p1, Point p2) { 
+        /// <summary>
+        /// Manhatton distance of two points.
+        /// </summary>
+        /// <param name="p1"></param>
+        /// <param name="p2"></param>
+        /// <returns></returns>
+        private int Manhatton(MyPoint p1, MyPoint p2) { 
             return Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
         }
 
-        public override bool IsEndState(GameState s) {
+        /// <summary>
+        /// Judge if state is the end.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public override bool IsEndState(GameState state) {
 
-            foreach (var grid in s.bi.d) {
-                if (grid == GridType.Box) {
-                    return false;
+            foreach (var target in GE.Targets) {
+                bool found = false;
+                foreach (var box in state.Info.Boxes) {
+                    if (box.Equals(target)) {
+                        found = true;
+                        break;
+                    }
                 }
-                if (grid == GridType.Target) {
-                    return false;
-                }
-                if (grid == GridType.TarPlayer) {
+
+                if (!found) {
                     return false;
                 }
             }
@@ -478,21 +400,25 @@ namespace MyPushBox {
         }
     }
 
+
+    /// <summary>
+    /// A Wrapper class, does nothing substantial.
+    /// </summary>
     public class AIPlayer
     {
-        PushBoxProblem pbp;
+        PushBoxProblem PBP;
 
         public AIPlayer() { 
         }
 
         public void SetStartBoard(BoardInfo info, GameEngine GE) {
-            GameState start_state = new GameState(info);
-            pbp = new PushBoxProblem(start_state, GE);
+            GameState startState = new GameState(info);
+            PBP = new PushBoxProblem(startState, GE);
         }
 
         public List<PlayerOperation> SearchPath()
         {
-            return pbp.RunAStar();
+            return PBP.RunAStar();
         }
     }
 
