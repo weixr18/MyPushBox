@@ -2,7 +2,7 @@
 
 using System;
 using System.IO;
-using System.Drawing;
+using System.Text;
 using System.Diagnostics;
 using System.Collections;
 using System.Collections.Generic;
@@ -158,17 +158,25 @@ namespace MyPushBox {
             this.OpenQueue.Push(StartState);
             GameState currentState = null;
             List<GameState> nextStates;
-#if _DEBUG_
-            int roundNum = 0;
-#endif
 
+
+#if _DEBUG_
+            
+#endif
+            int roundNum = 0;
+            var longestPath = 0;
+            var lastLongestPath = 15;
             while (true)
             {
-#if _DEBUG_
+
                 roundNum += 1;
-                if(roundNum % 10 == 0)
+#if _DEBUG_
+                if(roundNum % 10000 == 0)
                     Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", roundNum, this.OpenQueue.Count));
 #endif
+                if (roundNum >= 114273) {
+                    roundNum = roundNum;
+                }
                 // get current state
                 try
                 {
@@ -181,6 +189,14 @@ namespace MyPushBox {
                 }
                 //Debug.WriteLine("Current:");
                 //Debug.WriteLine(currentState);
+
+                longestPath = (int)Math.Max(longestPath, currentState.PathCost);
+                if (longestPath > lastLongestPath) {
+                    Debug.WriteLine(String.Format("Current longest path: {0:G}", longestPath));
+                    lastLongestPath = longestPath;
+                }
+
+                
 
                 // add to close list
                 this.CloseList.Add(currentState);
@@ -208,6 +224,10 @@ namespace MyPushBox {
                         tmp_GameState = path_stack.Pop();
                         res.Add(tmp_GameState.Operation);
                     }
+
+                    OpenQueue.Clear();
+                    CloseList.Clear();
+
                     return res;
                 }
 
@@ -312,7 +332,7 @@ namespace MyPushBox {
     class PushBoxProblem : GameStateProblem {
 
         GameEngine Engine;
-        private const bool CUT_BRANCHES = false;
+        private bool CUT_BRANCHES = true;
 
         public PushBoxProblem(GameState startState, GameEngine engine)
             : base(startState)
@@ -371,8 +391,8 @@ namespace MyPushBox {
             }
 
             /// use Hungary Algorithm to find the minimum distance sum
-            ZMatrix m = new ZMatrix(disMatrix);
-            double res = m.Calculation();
+            HungarianAlgorithm m = new HungarianAlgorithm(disMatrix);
+            var res = m.Run();
 
             return res;
         }

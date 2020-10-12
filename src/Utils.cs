@@ -93,6 +93,11 @@ namespace MyPushBox {
             //    _siftup(x, i)
 
         }
+
+        public void Clear() {
+            heap = null;
+            Count = 0;
+        }
     }
 
 

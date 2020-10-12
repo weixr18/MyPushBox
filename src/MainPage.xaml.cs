@@ -43,7 +43,7 @@ namespace MyPushBox
         private BitmapImage BitTarget = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
         private BitmapImage BitRedBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
         private BitmapImage BitOutside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
-        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/3.txt");
+        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/5.txt");
 
         private Image[,] Images;
         public BoardInfo Info;
@@ -348,9 +348,11 @@ namespace MyPushBox
         private void Start_Button_Clicked(object sender, RoutedEventArgs e)
         {
             AI.SetStartBoard(Info, Engine);
-            Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));
+            var time1 = DateTime.Now;
             var path = AI.SearchPath();
-            Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:ffffff"));
+            var time2 = DateTime.Now;
+            var cost = time2 - time1;
+            Debug.WriteLine(String.Format("Shortest path: {0:G}. Search time: {1:G}", path.Count, cost));
         }
     }
 }

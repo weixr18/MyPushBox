@@ -1,289 +1,264 @@
-﻿using System;
+﻿/*
+C# hungarian algorithm implementation
+    Copyright (C) 2015  Ivan Jurin
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 
 namespace MyPushBox
 {
 
-    class ZZeroNode
+    public sealed class HungarianAlgorithm
     {
-        public int X;
-        public int ZeroNum;
+        private readonly int[,] _costMatrix;
+        private int _inf;
+        private int _n; //number of elements
+        private int[] _lx; //labels for workers
+        private int[] _ly; //labels for jobs 
+        private bool[] _s;
+        private bool[] _t;
+        private int[] _matchX; //vertex matched with x
+        private int[] _matchY; //vertex matched with y
+        private int _maxMatch;
+        private int[] _slack;
+        private int[] _slackx;
+        private int[] _prev; //memorizing paths
 
-        public ZZeroNode(int x, int zeroNum)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="costMatrix"></param>
+        public HungarianAlgorithm(int[,] costMatrix)
         {
-            X = x;
-            ZeroNum = zeroNum;
+            _costMatrix = costMatrix;
         }
 
-        public static int Cmp(ZZeroNode a, ZZeroNode b)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public double Run()
         {
-            return a.ZeroNum.CompareTo(b.ZeroNum);
-        }
-    }
+            _n = _costMatrix.GetLength(0);
 
-    public class ZMatrix
-    {
-        private int[,] _data;
-        private int[,] _old_data;
-        private List<Point> _result = new List<Point>();
-        private int _x;
-        private int _y;
+            _lx = new int[_n];
+            _ly = new int[_n];
+            _s = new bool[_n];
+            _t = new bool[_n];
+            _matchX = new int[_n];
+            _matchY = new int[_n];
+            _slack = new int[_n];
+            _slackx = new int[_n];
+            _prev = new int[_n];
+            _inf = int.MaxValue;
 
-        public ZMatrix(int[,] data)
-        {
-            _data = (int[,])data.Clone();
-            _old_data = data;
-            _x = data.GetLength(0);
-            _y = data.GetLength(1);
-        }
-        public double Calculation()
-        {
-            step1();
-            while (!step2())
+
+            InitMatches();
+            if (_n != _costMatrix.GetLength(1))
+                return -1;
+            InitLbls();
+            _maxMatch = 0;
+            InitialMatching();
+            var q = new Queue<int>();
+
+            #region augment
+            while (_maxMatch != _n)
             {
-                step3();
+                q.Clear();
+                InitSt();
+                //Array.Clear(S,0,n);
+                //Array.Clear(T, 0, n);
+
+                //parameters for keeping the position of root node and two other nodes
+                var root = 0;
+                int x;
+                var y = 0;
+
+                //find root of the tree
+                for (x = 0; x < _n; x++)
+                {
+                    if (_matchX[x] != -1) continue;
+                    q.Enqueue(x);
+                    root = x;
+                    _prev[x] = -2;
+
+                    _s[x] = true;
+                    break;
+                }
+
+                //init slack
+                for (var i = 0; i < _n; i++)
+                {
+                    _slack[i] = _costMatrix[root, i] - _lx[root] - _ly[i];
+                    _slackx[i] = root;
+                }
+
+                //finding augmenting path
+                while (true)
+                {
+                    while (q.Count != 0)
+                    {
+                        x = q.Dequeue();
+                        var lxx = _lx[x];
+                        for (y = 0; y < _n; y++)
+                        {
+                            if (_costMatrix[x, y] != lxx + _ly[y] || _t[y]) continue;
+                            if (_matchY[y] == -1) break; //augmenting path found!
+                            _t[y] = true;
+                            q.Enqueue(_matchY[y]);
+
+                            AddToTree(_matchY[y], x);
+                        }
+                        if (y < _n) break; //augmenting path found!
+                    }
+                    if (y < _n) break; //augmenting path found!
+                    UpdateLabels(); //augmenting path not found, update labels
+
+                    for (y = 0; y < _n; y++)
+                    {
+                        //in this cycle we add edges that were added to the equality graph as a
+                        //result of improving the labeling, we add edge (slackx[y], y) to the tree if
+                        //and only if !T[y] &&  slack[y] == 0, also with this edge we add another one
+                        //(y, yx[y]) or augment the matching, if y was exposed
+
+                        if (_t[y] || _slack[y] != 0) continue;
+                        if (_matchY[y] == -1) //found exposed vertex-augmenting path exists
+                        {
+                            x = _slackx[y];
+                            break;
+                        }
+                        _t[y] = true;
+                        if (_s[_matchY[y]]) continue;
+                        q.Enqueue(_matchY[y]);
+                        AddToTree(_matchY[y], _slackx[y]);
+                    }
+                    if (y < _n) break;
+                }
+
+                _maxMatch++;
+
+                //inverse edges along the augmenting path
+                int ty;
+                for (int cx = x, cy = y; cx != -2; cx = _prev[cx], cy = ty)
+                {
+                    ty = _matchX[cx];
+                    _matchY[cy] = cx;
+                    _matchX[cx] = cy;
+                }
             }
 
+            #endregion
             double res = 0;
-            foreach (var point in _result) {
-                res += _old_data[point.X, point.Y];
+            for (int i = 0; i < _n; i++) {
+                res += _costMatrix[_matchX[i], _matchY[i]];
             }
-
             return res;
         }
 
-        /// <summary>
-        /// 在各列中找最小值，將該列中各元素檢去此值，對各行重複一次。
-        /// </summary>
-        private void step1()
+        private void InitMatches()
         {
-            //列
-            for (int x = 0; x < _x; x++)
+            for (var i = 0; i < _n; i++)
             {
-                int minY = Int32.MaxValue;
-                //找到每列最小的值
-                for (int y = 0; y < _y; y++)
-                {
-                    if (_data[x, y] < minY)
-                    {
-                        minY = _data[x, y];
-                    }
-                }
-                //让该列减去最小的值
-                for (int y = 0; y < _y; y++)
-                {
-                    _data[x, y] -= minY;
-                }
-            }
-            //行
-            for (int y = 0; y < _y; y++)
-            {
-                int minX = Int32.MaxValue;
-                //找到每列最小的值
-                for (int x = 0; x < _x; x++)
-                {
-                    if (_data[x, y] < minX)
-                    {
-                        minX = _data[x, y];
-                    }
-                }
-                //让该列减去最小的值
-                for (int x = 0; x < _x; x++)
-                {
-                    _data[x, y] -= minX;
-                }
+                _matchX[i] = -1;
+                _matchY[i] = -1;
             }
         }
 
-        /// <summary>
-        /// 检验各列，对碰上之第一個零，做记号，同列或同栏的其他零則画X (由零較少的列先做，可不依順序)
-        /// 
-        /// 检验可否完成仅含零的完全指派，若不能，則false
-        /// </summary>
-        private bool step2()
+        private void InitSt()
         {
-            _result.Clear();
-            bool[,] isDelete = new bool[_x, _y];
-
-            //零的数量由少到多
-            List<ZZeroNode> zeroNodes = new List<ZZeroNode>();
-            for (int x = 0; x < _x; x++)
+            for (var i = 0; i < _n; i++)
             {
-                int zeroNum = 0;
-                for (int y = 0; y < _y; y++)
-                {
-                    if (_data[x, y] == 0)
-                    {
-                        zeroNum++;
-                    }
-                }
-                if (zeroNum > 0)
-                {
-                    zeroNodes.Add(new ZZeroNode(x, zeroNum));
-                }
-            }
-            zeroNodes.Sort(ZZeroNode.Cmp);
-
-            //从零较少的行开始
-            while (zeroNodes.Count > 0)
-            {
-                ZZeroNode node = zeroNodes[0];
-
-                if (node.ZeroNum <= 0)
-                {
-                    zeroNodes.RemoveAt(0);
-                }
-                else
-                {
-                    for (int y = 0; y < _y; y++)
-                    {
-                        if (_data[node.X, y] == 0 && !isDelete[node.X, y])
-                        {
-                            _result.Add(new Point(node.X, y));
-                            zeroNodes.RemoveAt(0);
-
-                            //删除与该零在同一列的其他零
-                            for (int xxx = 0; xxx < _x; xxx++)
-                            {
-                                if (_data[xxx, y] == 0)
-                                {
-                                    isDelete[xxx, y] = true;
-                                    for (int i = 0; i < zeroNodes.Count; i++)
-                                    {
-                                        if (zeroNodes[i].X == xxx)
-                                        {
-                                            zeroNodes[i].ZeroNum--;
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                zeroNodes.Sort(ZZeroNode.Cmp);
-            }
-
-            return _result.Count == _x;
-        }
-
-        /// <summary>
-        /// 画出最少数目的垂直与水平的删除线來包含所有的零至少一次。
-        /// </summary>
-        private void step3()
-        {
-            bool[,] isDelete = new bool[_x, _y];
-            for (int x = 0; x < _x; x++)
-            {
-                for (int y = 0; y < _y; y++)
-                {
-                    if (_data[x, y] == 0 && !isDelete[x, y])
-                    {
-                        int xc = 0;
-                        int yc = 0;
-
-                        //lie
-                        for (int nx = 0; nx < _x; nx++)
-                        {
-                            if (nx != x && _data[nx, y] == 0)
-                            {
-                                xc++;
-                            }
-                        }
-
-                        //hang
-                        for (int ny = 0; ny < _y; ny++)
-                        {
-                            if (ny != y && _data[x, ny] == 0)
-                            {
-                                yc++;
-                            }
-                        }
-
-                        if (xc > yc)
-                        {
-                            for (int xx = 0; xx < _x; xx++)
-                            {
-                                isDelete[xx, y] = true;
-                            }
-                        }
-                        else
-                        {
-                            for (int yy = 0; yy < _y; yy++)
-                            {
-                                isDelete[x, yy] = true;
-                            }
-                        }
-                    }
-                }
-            }
-            //找出未被畫線的元素中之最小值 K
-            int k = 99999;
-            for (int x = 0; x < _x; x++)
-            {
-                for (int y = 0; y < _y; y++)
-                {
-                    if (!isDelete[x, y])
-                    {
-                        if (_data[x, y] < k)
-                        {
-                            k = _data[x, y];
-                        }
-                    }
-                }
-            }
-
-            //將含有此些未被畫線的元素的各列所有元素減去K 
-            for (int x = 0; x < _x; x++)
-            {
-                for (int y = 0; y < _y; y++)
-                {
-                    if (!isDelete[x, y])
-                    {
-                        for (int y1 = 0; y1 < _y; y1++)
-                        {
-                            _data[x, y1] -= k;
-                        }
-                        break;
-                    }
-                }
-            }
-
-            //若造成負值，則將該欄加上K (Step 4.2)。形成新矩陣後回到Step2
-            for (int x = 0; x < _x; x++)
-            {
-                for (int y = 0; y < _y; y++)
-                {
-                    if (_data[x, y] < 0)
-                    {
-                        for (int x1 = 0; x1 < _x; x1++)
-                        {
-                            _data[x1, y] += k;
-                        }
-                        break;
-                    }
-                }
+                _s[i] = false;
+                _t[i] = false;
             }
         }
 
-    }
-
-    /*
-    class Program1
-    {
-        static void Main(string[] args)
+        private void InitLbls()
         {
-            int[,] data = new int[4, 4] { 
-                { 65, 23, 8, 4 }, 
-                { 5, 3, 7, 8 }, 
-                { 9, 0, 41, 12 }, 
-                { 13, 9, 3, 16 } 
-            };
-            ZMatrix m = new ZMatrix(data);
-            double res = m.Calculation();
+            for (var i = 0; i < _n; i++)
+            {
+                var minRow = _costMatrix[i, 0];
+                for (var j = 0; j < _n; j++)
+                {
+                    if (_costMatrix[i, j] < minRow) minRow = _costMatrix[i, j];
+                    if (minRow == 0) break;
+                }
+                _lx[i] = minRow;
+            }
+            for (var j = 0; j < _n; j++)
+            {
+                var minColumn = _costMatrix[0, j] - _lx[0];
+                for (var i = 0; i < _n; i++)
+                {
+                    if (_costMatrix[i, j] - _lx[i] < minColumn) minColumn = _costMatrix[i, j] - _lx[i];
+                    if (minColumn == 0) break;
+                }
+                _ly[j] = minColumn;
+            }
+        }
+
+        private void UpdateLabels()
+        {
+            var delta = _inf;
+            for (var i = 0; i < _n; i++)
+                if (!_t[i])
+                    if (delta > _slack[i])
+                        delta = _slack[i];
+            for (var i = 0; i < _n; i++)
+            {
+                if (_s[i])
+                    _lx[i] = _lx[i] + delta;
+                if (_t[i])
+                    _ly[i] = _ly[i] - delta;
+                else _slack[i] = _slack[i] - delta;
+            }
+        }
+
+        private void AddToTree(int x, int prevx)
+        {
+            //x-current vertex, prevx-vertex from x before x in the alternating path,
+            //so we are adding edges (prevx, matchX[x]), (matchX[x],x)
+
+            _s[x] = true; //adding x to S
+            _prev[x] = prevx;
+
+            var lxx = _lx[x];
+            //updateing slack
+            for (var y = 0; y < _n; y++)
+            {
+                if (_costMatrix[x, y] - lxx - _ly[y] >= _slack[y]) continue;
+                _slack[y] = _costMatrix[x, y] - lxx - _ly[y];
+                _slackx[y] = x;
+            }
+        }
+
+        private void InitialMatching()
+        {
+            for (var x = 0; x < _n; x++)
+            {
+                for (var y = 0; y < _n; y++)
+                {
+                    if (_costMatrix[x, y] != _lx[x] + _ly[y] || _matchY[y] != -1) continue;
+                    _matchX[x] = y;
+                    _matchY[y] = x;
+                    _maxMatch++;
+                    break;
+                }
+            }
         }
     }
-    */
-
 }

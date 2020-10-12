@@ -144,6 +144,8 @@
     <Content Include="Assets\Stages\1.txt" />
     <Content Include="Assets\Stages\2.txt" />
     <Content Include="Assets\Stages\3.txt" />
+    <Content Include="Assets\Stages\4.txt" />
+    <Content Include="Assets\Stages\5.txt" />
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
