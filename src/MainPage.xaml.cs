@@ -111,7 +111,7 @@ namespace MyPushBox
                         string[] numStrings = line.Split(' ');
                         int rowCount = Convert.ToInt32(numStrings[0], 10);
                         int columnCount = Convert.ToInt32(numStrings[1], 10);
-                        Player player = new Player(0, 0);
+                        Point player = new Point(0, 0);
                         info = new BoardInfo(rowCount, columnCount, player);
 
                         for (int i = 0; i < rowCount; i++)
@@ -144,8 +144,8 @@ namespace MyPushBox
                             throw new FileLoadException("No Player Position in Stage File.");
                         }
 
-                        info.p.x = player_x;
-                        info.p.y = player_y;
+                        info.p.X = player_x;
+                        info.p.Y = player_y;
                        
                     }
                 }
@@ -156,7 +156,7 @@ namespace MyPushBox
             {
                 Debug.WriteLine("The file could not be read:");
                 Debug.WriteLine(e.Message);
-                return new BoardInfo(0, 0, new Player(0, 0));
+                return new BoardInfo(0, 0, new Point(0, 0));
             }
         }
 

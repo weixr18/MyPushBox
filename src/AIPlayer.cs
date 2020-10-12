@@ -90,7 +90,7 @@ namespace MyPushBox {
         public override string ToString()
         {
             String s = "";
-            s += String.Format("  player position: ({0:G}, {1:G})\n", bi.p.y, bi.p.x);
+            s += String.Format("  player position: ({0:G}, {1:G})\n", bi.p.Y, bi.p.X);
             s += String.Format(
                 "  (path, distance, sum): ({0:G}, {1:G}, {2:G})\n",
                 this.path_cost, this.distance_cost,
@@ -299,7 +299,7 @@ namespace MyPushBox {
                             // father
                             continue;
                         }
-                        /*
+                        
                         else if (this.close_list.Contains(s))
                         {
                             // closed
@@ -323,7 +323,7 @@ namespace MyPushBox {
                             }
                             continue;
                         }
-                        */
+                        
                         else if (s.path_cost < 0)
                         {
                             s.path_cost = current_GameState.path_cost + 1;
