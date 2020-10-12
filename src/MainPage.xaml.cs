@@ -43,7 +43,7 @@ namespace MyPushBox
         private BitmapImage BitTarget = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
         private BitmapImage BitRedBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
         private BitmapImage BitOutside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
-        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/5.txt");
+        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/8.txt");
 
         private Image[,] Images;
         public BoardInfo Info;
