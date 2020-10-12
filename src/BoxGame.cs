@@ -99,8 +99,11 @@ namespace MyPushBox
 
         public BoardInfo Clone() {
             var player = new MyPoint(Player.X, Player.Y);
-            var boxes = new List<MyPoint>(Boxes);
+            var boxes = new List<MyPoint>();
 
+            foreach (var box in Boxes) {
+                boxes.Add(new MyPoint(box.X, box.Y));
+            }
             BoardInfo info = new BoardInfo(player, boxes);
             return info;
         }

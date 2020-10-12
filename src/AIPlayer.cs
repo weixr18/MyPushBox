@@ -94,6 +94,9 @@ namespace MyPushBox {
         {
             String s = "";
             s += String.Format("  player position: ({0:G}, {1:G})\n", Info.Player.X, Info.Player.Y);
+            foreach (var box in Info.Boxes) {
+                s += String.Format("      box : ({0:G}, {1:G})\n", box.X, box.Y);
+            }
             s += String.Format(
                 "  (path, distance, sum): ({0:G}, {1:G}, {2:G})\n",
                 this.PathCost, this.DistanceCost,
@@ -171,7 +174,7 @@ namespace MyPushBox {
                 }
                 catch (System.InvalidOperationException e)
                 {
-                    //Console.WriteLine("Search over. Cannot find an answer.");
+                    Debug.WriteLine("Search over. Cannot find an answer.");
                     return new List<PlayerOperation>();
                 }
 
@@ -383,9 +386,11 @@ namespace MyPushBox {
         /// <returns></returns>
         public override bool IsEndState(GameState state) {
 
-            foreach (var target in GE.Targets) {
+            foreach (var target in GE.Targets) 
+            {
                 bool found = false;
-                foreach (var box in state.Info.Boxes) {
+                foreach (var box in state.Info.Boxes) 
+                {
                     if (box.Equals(target)) {
                         found = true;
                         break;
