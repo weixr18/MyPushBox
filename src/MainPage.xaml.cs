@@ -1,27 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.System;
+using Windows.System.Threading;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
-using System.Linq;
+using System.Collections.ObjectModel;
 
 namespace MyPushBox
 {
+    public class GridImageThumb
+    {
+        public ImageSource GridImageSource { get; set; }
+        public string GridName { get; set; }
+    }
 
     /// <summary>
     /// Main Page of the program.
     /// </summary>
     public sealed partial class MainPage : Page
     {
+
         private class InfoPack
         {
             public BoardInfo Info;
@@ -43,11 +49,13 @@ namespace MyPushBox
         private BitmapImage BitTarget = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
         private BitmapImage BitRedBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
         private BitmapImage BitOutside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
-       
+        private ObservableCollection<GridImageThumb> GridImageThumbList { get; } = new ObservableCollection<GridImageThumb>();
+
 
         private Image[,] Images;
         private List<PlayerOperation> AnswerPath;
         private BoardInfo StartInfo;
+        private int currentStep = 2147483647;
 
         public BoardInfo Info;
         public GameEngine Engine;
@@ -115,6 +123,15 @@ namespace MyPushBox
             BlockType.Add(GridType.Brick, BitBrick);
             BlockType.Add(GridType.Target, BitTarget);
             BlockType.Add(GridType.OutSide, BitOutside);
+
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitBox, GridName = "Box" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitBrick, GridName = "Brick" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitGround, GridName = "Ground" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitTarget, GridName = "Target" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitRedBox, GridName = "Placed Box" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitOutside, GridName = "Outside" });
+            GridImageThumbList.Add(new GridImageThumb { GridImageSource = BitPlayer, GridName = "Player" });
+
         }
 
         /// <summary>
@@ -247,6 +264,19 @@ namespace MyPushBox
                 g.ColumnDefinitions.Add(rd);
             }
 
+            for (int r = 0; r < rowNum; r++)
+            {
+                for (int c = 0; c < columnNum; c++)
+                {
+                    var img = new Image();
+                    Images[r, c] = img;
+                    GridTable.Children.Add(img);
+                    Grid.SetColumn(img, c);
+                    Grid.SetRow(img, r);
+                }
+            }
+
+
         }
 
 
@@ -265,38 +295,25 @@ namespace MyPushBox
             {
                 for (int c = 0; c < columnNum; c++)
                 {
-                    img = new Image();
-                    Images[r, c] = img;
-                    img.Source = BlockType[g[r, c]];
-                    GridTable.Children.Add(img);
-                    Grid.SetColumn(img, c);
-                    Grid.SetRow(img, r);
+                    Images[r, c].Source = BlockType[g[r, c]];
                 }
             }
 
             // player
-            img = new Image();
-            Images[Info.Player.Y, Info.Player.X] = img;
+            img = Images[Info.Player.Y, Info.Player.X];
             img.Source = BitPlayer;     // player will cover the target.
-            GridTable.Children.Add(img);
-            Grid.SetColumn(img, Info.Player.X);
-            Grid.SetRow(img, Info.Player.Y);
             
 
             // boxes
             foreach (var box in Info.Boxes)
             {
-                img = new Image();
-                Images[box.Y, box.X] = img;
+                img = Images[box.Y, box.X];
 
                 if (g[box.Y, box.X] == GridType.Target) 
                     img.Source = BitRedBox;
                 else 
                     img.Source = BitBox;
                 
-                GridTable.Children.Add(img);
-                Grid.SetColumn(img, box.X);
-                Grid.SetRow(img, box.Y);
             }
 
         }
@@ -310,31 +327,28 @@ namespace MyPushBox
         private void Page_KeyDown(CoreWindow sender, KeyEventArgs args)
         {
             VirtualKey virtualKey = args.VirtualKey;
+            args.Handled = true;
             switch (virtualKey)
             {
                 case VirtualKey.W:
-                case VirtualKey.Up:
                 {
                     Engine.PlayerOperate(PlayerOperation.Up, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.S:
-                case VirtualKey.Down:
                 {
                     Engine.PlayerOperate(PlayerOperation.Down, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.D:
-                case VirtualKey.Right:
                 {
                     Engine.PlayerOperate(PlayerOperation.Right, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.A:
-                case VirtualKey.Left:
                 {
                     Engine.PlayerOperate(PlayerOperation.Left, Info);
                     RefreshGrid();
@@ -380,8 +394,43 @@ namespace MyPushBox
             
         }
 
+        /// <summary>
+        /// Autoplay the search result.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Show_Button_Clicked(object sender, RoutedEventArgs e)
         {
+            
+            currentStep = 0;
+
+            TimeSpan delay = TimeSpan.FromMilliseconds(500);
+            ThreadPoolTimer DelayTimer = ThreadPoolTimer.CreatePeriodicTimer(
+                /// timer tic callback
+                async (source) => {
+                    var operation = AnswerPath[currentStep];
+                    currentStep += 1;
+                    if(currentStep == AnswerPath.Count)
+                    {
+                        source.Cancel();
+                    }
+                    Engine.PlayerOperate(operation, Info);
+
+                    await Dispatcher.RunAsync(
+                        CoreDispatcherPriority.High,
+                        () =>
+                        {
+                            RefreshGrid();
+                        }
+                    );
+                    
+                }, 
+                delay,
+                /// timer deatroy handler
+                (source) => {
+                    currentStep = 2147483647;
+                }
+            );
             
         }
 

@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:Microsoft.Toolkit.Uwp.UI.Controls"
+    xmlns:local="using:MyPushBox"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
@@ -71,8 +72,6 @@
                             <x:String>7</x:String>
                             <x:String>8</x:String>
                         </ComboBox>
-
-
                     </Grid>
 
                     <Grid 
@@ -135,12 +134,40 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="0" Grid.Column="1">
-                    <TextBlock>
-                        Explanations
+                    
+                    <TextBlock FontSize="25" Margin="5, 10, 5, 10">
+                        Grids
                     </TextBlock>
-                    <TextBlock>
+                    
+                    <ListView x:Name="GridsList" ItemsSource="{x:Bind GridImageThumbList}"
+                              SelectionMode = "None" IsItemClickEnabled = "False">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="local:GridImageThumb">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="47"/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="{x:Bind GridImageSource}" Width="32" Height="32"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{x:Bind GridName}" Foreground="Black" FontSize="14" 
+                                Grid.Column="1" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    
+                    <TextBlock FontSize="25" Margin="5, 10, 5, 10">
                         Operations
                     </TextBlock>
+
+                    <ListView x:Name="Operations" FontSize="22" SelectionMode = "None"
+                              IsItemClickEnabled = "False">
+                        <x:String>W -- Up</x:String>
+                        <x:String>S -- Down</x:String>
+                        <x:String>A -- Left</x:String>
+                        <x:String>D -- Right</x:String>
+                    </ListView>
                 </StackPanel>
 
             </Grid>
