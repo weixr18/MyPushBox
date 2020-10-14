@@ -174,9 +174,7 @@ namespace MyPushBox {
                 if(roundNum % 10000 == 0)
                     Debug.WriteLine(String.Format("-----Round {0:G} Open:{1:G}-----", roundNum, this.OpenQueue.Count));
 #endif
-                if (roundNum >= 114273) {
-                    roundNum = roundNum;
-                }
+
                 // get current state
                 try
                 {

@@ -12,7 +12,7 @@ using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media.Imaging;
-
+using System.Linq;
 
 namespace MyPushBox
 {
@@ -43,12 +43,16 @@ namespace MyPushBox
         private BitmapImage BitTarget = new BitmapImage(new Uri("ms-appx:///Assets/Block/Target.jpg"));
         private BitmapImage BitRedBox = new BitmapImage(new Uri("ms-appx:///Assets/Block/RedBox.jpg"));
         private BitmapImage BitOutside = new BitmapImage(new Uri("ms-appx:///Assets/Block/Outside.jpg"));
-        private Uri FileUri = new Uri("ms-appx:///Assets/Stages/8.txt");
+       
 
         private Image[,] Images;
+        private List<PlayerOperation> AnswerPath;
+        private BoardInfo StartInfo;
+
         public BoardInfo Info;
         public GameEngine Engine;
         public AIPlayer AI;
+        
 
         /// <summary>
         /// checked.
@@ -58,13 +62,15 @@ namespace MyPushBox
             
             // layout component initialize
             this.InitializeComponent();
+            PathText.Text = "Welcome.";
 
             // other properties initialize
             this.InitializeMaps();
             
-            var pack = GetBoardInfo().Result;
+            var pack = GetBoardInfo(1).Result;
             Engine = pack.Engine;
             Info = pack.Info;
+            StartInfo = Info.Clone();
 
             AI = new AIPlayer();
 
@@ -115,7 +121,7 @@ namespace MyPushBox
         /// Read the statistic and dynamic information from the file. checked.
         /// </summary>
         /// <returns></returns>
-        private async Task<InfoPack> GetBoardInfo()
+        private async Task<InfoPack> GetBoardInfo(int stageIndex)
         {
             MyPoint player = new MyPoint(-1, -1);
             List<MyPoint> boxes = new List<MyPoint>();
@@ -126,7 +132,7 @@ namespace MyPushBox
 
             try
             {
-                var uri = FileUri;
+                var uri = new Uri(String.Format("ms-appx:///Assets/Stages/{0:G}.txt", stageIndex)); 
                 var file = await StorageFile.GetFileFromApplicationUriAsync(uri).AsTask().ConfigureAwait(false);
                 var encoding = Encoding.GetEncoding("utf-8");
 
@@ -208,8 +214,9 @@ namespace MyPushBox
             }
             catch (Exception e)
             {
-                Debug.WriteLine("The file could not be read:");
-                Debug.WriteLine(e.Message);
+                var message = "The file could not be read:";
+                message += e.Message;
+                PathText.Text = message;
                 return null;
             }
         }
@@ -222,8 +229,9 @@ namespace MyPushBox
             int rowNum = Engine.RowNum;
             int columnNum = Engine.ColumnNum;
             Grid g = GridTable;
+            g.RowDefinitions.Clear();
+            g.ColumnDefinitions.Clear();
             Images = new Image[rowNum, columnNum];
-
 
             for (int i = 0; i < rowNum; i++)
             {
@@ -307,28 +315,28 @@ namespace MyPushBox
                 case VirtualKey.W:
                 case VirtualKey.Up:
                 {
-                    Engine.PlayerOperate(PlayerOperation.MoveUp, Info);
+                    Engine.PlayerOperate(PlayerOperation.Up, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.S:
                 case VirtualKey.Down:
                 {
-                    Engine.PlayerOperate(PlayerOperation.MoveDown, Info);
+                    Engine.PlayerOperate(PlayerOperation.Down, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.D:
                 case VirtualKey.Right:
                 {
-                    Engine.PlayerOperate(PlayerOperation.MoveRight, Info);
+                    Engine.PlayerOperate(PlayerOperation.Right, Info);
                     RefreshGrid();
                     break;
                 }
                 case VirtualKey.A:
                 case VirtualKey.Left:
                 {
-                    Engine.PlayerOperate(PlayerOperation.MoveLeft, Info);
+                    Engine.PlayerOperate(PlayerOperation.Left, Info);
                     RefreshGrid();
                     break;
                 }
@@ -345,14 +353,65 @@ namespace MyPushBox
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Start_Button_Clicked(object sender, RoutedEventArgs e)
+        private void Search_Button_Clicked(object sender, RoutedEventArgs e)
         {
-            AI.SetStartBoard(Info, Engine);
-            var time1 = DateTime.Now;
-            var path = AI.SearchPath();
-            var time2 = DateTime.Now;
-            var cost = time2 - time1;
-            Debug.WriteLine(String.Format("Shortest path: {0:G}. Search time: {1:G}", path.Count, cost));
+            try
+            {
+                AI.SetStartBoard(StartInfo, Engine);
+                PathText.Text = "Searching...";
+                var timeStart = DateTime.Now;
+                AnswerPath = AI.SearchPath();
+                ShowPathButton.IsEnabled = true;
+
+                var timeCost = DateTime.Now - timeStart;
+                String message = "Shortest path found.\n";
+                message += String.Format("Path length: {0:G}. Search time: {1:G}\n", AnswerPath.Count, timeCost);
+                message += "Path: ";
+                foreach (var operation in AnswerPath) {
+                    message += operation + "  ";
+                }
+                message += "\n";
+                PathText.Text = message;
+            }
+            catch (OutOfMemoryException) 
+            {
+                PathText.Text = "Search stopped because of an out of memory exception.";
+            }
+            
+        }
+
+        private void Show_Button_Clicked(object sender, RoutedEventArgs e)
+        {
+            
+        }
+
+        private void Reset_Button_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (StageChoose.SelectedValue != null) {
+                PathText.Text = "Current Stage: " + StageChoose.SelectedValue.ToString();
+            }
+            
+            Info = StartInfo.Clone();
+            this.RefreshGrid();
+        }
+
+        /// <summary>
+        /// User choose a new stage.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Stage_Changed(object sender, RoutedEventArgs e)
+        {
+            var selectedStage = int.Parse(StageChoose.SelectedValue.ToString());
+            var pack = GetBoardInfo(selectedStage).Result;
+            Engine = pack.Engine;
+            Info = pack.Info;
+            StartInfo = Info.Clone();
+            PathText.Text = "Current Stage: " + selectedStage.ToString();
+            AnswerPath = null;
+            ShowPathButton.IsEnabled = false;
+            this.InitializeGrid();
+            this.RefreshGrid();
         }
     }
 }

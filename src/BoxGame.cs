@@ -50,10 +50,10 @@ namespace MyPushBox
     /// </summary>
     public enum PlayerOperation
     {
-        MoveUp,
-        MoveRight,
-        MoveDown,
-        MoveLeft,
+        Up,
+        Right,
+        Down,
+        Left,
     }
 
     public class MyPoint {
@@ -188,7 +188,7 @@ namespace MyPushBox
 
             switch (o)
             {
-                case PlayerOperation.MoveUp:
+                case PlayerOperation.Up:
                 {
                     if (playerY == 0)
                        return false;
@@ -199,7 +199,7 @@ namespace MyPushBox
                     hasAlternateGrid = (playerY > 1);
                     break;
                 }
-                case PlayerOperation.MoveDown:
+                case PlayerOperation.Down:
                 {
                     if (playerY == rowNum - 1)
                         return false;
@@ -210,7 +210,7 @@ namespace MyPushBox
                     hasAlternateGrid = (playerY < rowNum - 2);
                     break;
                 }
-                case PlayerOperation.MoveLeft:
+                case PlayerOperation.Left:
                 {
                     if (playerX == 0)
                         return false;
@@ -221,7 +221,7 @@ namespace MyPushBox
                     hasAlternateGrid = (playerX > 1);
                     break;
                 }
-                case PlayerOperation.MoveRight:
+                case PlayerOperation.Right:
                 {
                     if (playerX == columnNum - 1)
                         return false;
