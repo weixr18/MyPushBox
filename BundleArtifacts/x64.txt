@@ -1,0 +1,2 @@
+MainPackage=D:\Codes\C#\AI\MyPushBox\bin\x64\Release\MyPushBox_1.0.1.0_x64.msix
+SymbolPackage=D:\Codes\C#\AI\MyPushBox\obj\x64\Release\Symbols\MyPushBox_1.0.1.0_x64.appxsym

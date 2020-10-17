@@ -1,0 +1,3 @@
+MainPackage=D:\Codes\C#\AI\MyPushBox\bin\ARM\Release\MyPushBox_1.0.1.0_ARM.msix
+SymbolPackage=D:\Codes\C#\AI\MyPushBox\obj\ARM\Release\Symbols\MyPushBox_1.0.1.0_ARM.appxsym
+ResourcePack=D:\Codes\C#\AI\MyPushBox\bin\ARM\Release\MyPushBox_1.0.1.0_language-zh-hans.msix
