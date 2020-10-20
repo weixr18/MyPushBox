@@ -8,7 +8,8 @@ See project report at **./Report.pdf**
 
 ### Environment Requirement
 
-This app requires **Windows 10** OS and the supporting CPU architectures are **x86/x64/ARM**.
++ OS: **Windows 10**
++ CPU: **x86/x64/ARM**
 
 ### Steps
 
